@@ -1,11 +1,12 @@
 'use client'
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { useAppStore } from '@/store/dashboard'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
 import { Nav } from '@/components/ui/Nav'
 import { Sidebar, SidebarItem } from '@/components/ui/Sidebar'
 import { QuickAddFAB } from '@/components/ui/QuickAddFAB'
+import { Button } from '@/components/ui/Button'
 import { ContactsPage } from '@/components/pages/ContactsPage'
 import { CompaniesPage } from '@/components/pages/CompaniesPage'
 import { DealsPage } from '@/components/pages/DealsPage'
@@ -47,21 +48,30 @@ function DashboardView() {
 }
 
 export default function HomePage() {
-  const { currentView, setCurrentView, load } = useAppStore()
+  const { currentView, setCurrentView, load, error, loading } = useAppStore()
+  const [showError, setShowError] = useState(false)
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
     
-    if (e.key === '1') setCurrentView('dashboard')
-    else if (e.key === '2') setCurrentView('contacts')
-    else if (e.key === '3') setCurrentView('companies')
-    else if (e.key === '4') setCurrentView('deals')
-    else if (e.key === '5') setCurrentView('tasks')
-    else if (e.key === '6') setCurrentView('calendar')
-    else if (e.key === '7') setCurrentView('analytics')
+    if (e.key === 'Escape') {
+      const modal = document.querySelector('[role="dialog"]')
+      if (modal) modal.remove()
+    }
+    else if (e.key === '1' && !e.metaKey) setCurrentView('dashboard')
+    else if (e.key === '2' && !e.metaKey) setCurrentView('contacts')
+    else if (e.key === '3' && !e.metaKey) setCurrentView('companies')
+    else if (e.key === '4' && !e.metaKey) setCurrentView('deals')
+    else if (e.key === '5' && !e.metaKey) setCurrentView('tasks')
+    else if (e.key === '6' && !e.metaKey) setCurrentView('calendar')
+    else if (e.key === '7' && !e.metaKey) setCurrentView('analytics')
   }, [setCurrentView])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (error) setShowError(true)
+  }, [error])
 
   useEffect(() => {
     document.title = `OpenCRM - ${currentView.charAt(0).toUpperCase() + currentView.slice(1)}`
@@ -89,6 +99,23 @@ export default function HomePage() {
       default:
         return <DashboardView />
     }
+  }
+
+  if (showError && error) {
+    return (
+      <main className="min-h-screen bg-bg flex">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <p className="text-red-500 text-lg mb-4">Failed to load data</p>
+            <p className="text-text-muted mb-6">{error}</p>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={load}>Retry</Button>
+              <Button variant="ghost" onClick={() => setShowError(false)}>Dismiss</Button>
+            </div>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   return (

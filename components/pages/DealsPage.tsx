@@ -1,38 +1,12 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/dashboard'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-
-const DEAL_STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost']
-
-const STAGE_PROBABILITY: Record<string, number> = {
-  lead: 10,
-  qualified: 25,
-  proposal: 50,
-  negotiation: 75,
-  closed_won: 100,
-  closed_lost: 0,
-}
-
-const stageColors: Record<string, string> = {
-  lead: 'border-text-muted',
-  qualified: 'border-text-secondary',
-  proposal: 'border-blue-400',
-  negotiation: 'border-yellow-400',
-  closed_won: 'border-brand',
-  closed_lost: 'border-red-400',
-}
-
-const stageBgColors: Record<string, string> = {
-  lead: 'bg-text-muted/10',
-  qualified: 'bg-text-secondary/10',
-  proposal: 'bg-blue-400/10',
-  negotiation: 'bg-yellow-400/10',
-  closed_won: 'bg-brand/10',
-  closed_lost: 'bg-red-400/10',
-}
+import { DEAL_STAGES, STAGE_COLORS, formatDate, formatCurrency, ITEMS_PER_PAGE } from '@/lib/constants'
+import { validateDeal } from '@/lib/validation'
+import { Pagination } from '@/components/ui/Pagination'
 
 interface DealCardProps {
   deal: { id: string; title: string; value: number; stage: string; probability: number; contact_id: string; created_at: string }
@@ -44,7 +18,7 @@ interface DealCardProps {
 function DealCard({ deal, onMove, onDelete, getContactName }: DealCardProps) {
   const weightedValue = Math.round(deal.value * (deal.probability / 100))
   return (
-    <div className={`bg-bg border-l-4 ${stageColors[deal.stage]} ${stageBgColors[deal.stage]} rounded-sm p-3 mb-2`}>
+    <div className={`bg-bg border-l-4 ${STAGE_COLORS[deal.stage]?.border || 'border-text-muted'} ${STAGE_COLORS[deal.stage]?.bg || 'bg-text-muted/10'} rounded-sm p-3 mb-2`}>
       <p className="text-text-primary font-medium text-sm">{deal.title}</p>
       <p className="text-text-muted text-xs mt-1">
         {deal.contact_id && getContactName(deal.contact_id)}
@@ -82,6 +56,8 @@ export function DealsPage() {
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [currentPage, setCurrentPage] = useState(1)
   const [formData, setFormData] = useState({
     title: '',
     value: 0,
@@ -92,6 +68,12 @@ export function DealsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const errors = validateDeal({ title: formData.title, value: formData.value })
+    if (errors.length > 0) {
+      setValidationErrors(Object.fromEntries(errors.map(e => [e.field, e.message])))
+      return
+    }
+    setValidationErrors({})
     const now = new Date().toISOString()
     await addDeal({
       id: crypto.randomUUID(),
@@ -112,6 +94,8 @@ export function DealsPage() {
     d.title.toLowerCase().includes(search.toLowerCase()) ||
     getContactName(d.contact_id).toLowerCase().includes(search.toLowerCase())
   )
+  useEffect(() => setCurrentPage(1), [search])
+  const paginatedDeals = filteredDeals.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
   const totalValue = deals.reduce((sum, d) => sum + d.value, 0)
   const weightedValue = deals.reduce((sum, d) => sum + (d.value * (d.probability || 0) / 100), 0)
@@ -240,9 +224,9 @@ export function DealsPage() {
 
       {viewMode === 'board' ? (
         <div className="grid grid-cols-6 gap-3">
-          {DEAL_STAGES.map(stage => (
-            <div key={stage} className="min-h-[200px]">
-              <div className={`text-xs uppercase tracking-wider text-text-muted mb-2 pb-2 border-b ${stageColors[stage]}`}>
+{DEAL_STAGES.map(stage => (
+              <div key={stage} className="min-h-[200px]">
+                <div className={`text-xs uppercase tracking-wider text-text-muted mb-2 pb-2 border-b ${STAGE_COLORS[stage]?.border || 'border-text-muted'}`}>
                 {stage.replace('_', ' ')} ({dealsByStage[stage].length})
               </div>
               <div className="space-y-0">
@@ -266,14 +250,21 @@ export function DealsPage() {
           </p>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredDeals.map(deal => (
+        <>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredDeals.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+          />
+          <div className="space-y-4">
+            {paginatedDeals.map(deal => (
             <Card key={deal.id}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-text-primary font-medium text-lg">{deal.title}</p>
                   <p className="text-text-muted text-sm">
-                    {deal.contact_id && getContactName(deal.contact_id)} · {new Date(deal.created_at).toLocaleDateString()}
+                    {deal.contact_id && getContactName(deal.contact_id)} · {formatDate(deal.created_at)}
                   </p>
                 </div>
                 <div className="flex items-center gap-6">
@@ -301,6 +292,7 @@ export function DealsPage() {
             </Card>
           ))}
         </div>
+        </>
       )}
     </div>
   )

@@ -97,6 +97,3 @@ export const fetchAppData = (): Promise<AppData> =>
 
 export const saveAppData = (data: AppData): Promise<void> =>
   invoke('save_app_data', { data })
-
-export const fetchSystemInfo = (): Promise<Record<string, string>> =>
-  invoke('get_system_info')

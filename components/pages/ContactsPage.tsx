@@ -1,10 +1,13 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/dashboard'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Contact } from '@/lib/ipc'
+import { validateContact, isValidEmail, isValidName, isValidPhone } from '@/lib/validation'
+import { formatDate, ITEMS_PER_PAGE } from '@/lib/constants'
+import { Pagination } from '@/components/ui/Pagination'
 
 export function ContactsPage() {
   const { contacts, companies, notes, emails, settings, addContact, updateContact, deleteContact, addNote, deleteNote, addEmail } = useAppStore()
@@ -17,6 +20,8 @@ export function ContactsPage() {
   const [newNote, setNewNote] = useState('')
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [emailForm, setEmailForm] = useState({ subject: '', body: '' })
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [currentPage, setCurrentPage] = useState(1)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,6 +33,12 @@ export function ContactsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const errors = validateContact({ name: formData.name, email: formData.email, phone: formData.phone })
+    if (errors.length > 0) {
+      setValidationErrors(Object.fromEntries(errors.map(e => [e.field, e.message])))
+      return
+    }
+    setValidationErrors({})
     const now = new Date().toISOString()
     if (editingId) {
       await updateContact(editingId, formData)
@@ -149,6 +160,8 @@ export function ContactsPage() {
     c.email.toLowerCase().includes(search.toLowerCase()) ||
     getCompanyName(c.company_id).toLowerCase().includes(search.toLowerCase())
   )
+  useEffect(() => setCurrentPage(1), [search])
+  const paginatedContacts = filteredContacts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
   const statusColors: Record<string, string> = {
     lead: 'text-text-secondary',
@@ -200,8 +213,9 @@ export function ContactsPage() {
                   required
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className={`w-full bg-bg-deep border rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none ${validationErrors.name ? 'border-red-500' : 'border-border-base'}`}
                 />
+                {validationErrors.name && <p className="text-red-500 text-xs mt-1">{validationErrors.name}</p>}
               </div>
               <div>
                 <label className="block text-text-muted text-sm mb-1">Email</label>
@@ -210,8 +224,9 @@ export function ContactsPage() {
                   required
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className={`w-full bg-bg-deep border rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none ${validationErrors.email ? 'border-red-500' : 'border-border-base'}`}
                 />
+                {validationErrors.email && <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>}
               </div>
               <div>
                 <label className="block text-text-muted text-sm mb-1">Phone</label>
@@ -282,8 +297,15 @@ export function ContactsPage() {
           </p>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {filteredContacts.map(contact => {
+        <>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredContacts.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+          />
+          <div className="grid gap-4">
+            {paginatedContacts.map(contact => {
             const companyName = getCompanyName(contact.company_id)
             const isSelected = selectedForMerge.includes(contact.id)
             return (
@@ -322,7 +344,8 @@ export function ContactsPage() {
               </Card>
             )
           })}
-        </div>
+          </div>
+        </>
       )}
 
       {selectedContact && (

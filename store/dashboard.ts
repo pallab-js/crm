@@ -1,20 +1,12 @@
 import { create } from 'zustand'
 import { fetchAppData, saveAppData, AppData, Contact, Company, Note, Email, Deal, Task, Activity, AppSettings } from '@/lib/ipc'
+import { STAGE_PROBABILITIES } from '@/lib/constants'
 
 const createActivity = (message: string): Activity => ({
   id: crypto.randomUUID(),
   message,
   timestamp: new Date().toISOString(),
 })
-
-const STAGE_PROBABILITIES: Record<string, number> = {
-  lead: 10,
-  qualified: 25,
-  proposal: 50,
-  negotiation: 75,
-  closed_won: 100,
-  closed_lost: 0,
-}
 
 interface AppStore extends AppData {
   loading: boolean
@@ -63,7 +55,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const data = await fetchAppData()
       set({ ...data, loading: false })
     } catch (err) {
-      set({ loading: false, error: String(err) })
+      const msg = err instanceof Error ? err.message : 'Failed to load data'
+      console.error('[OpenCRM] Load error:', msg)
+      set({ loading: false, error: msg })
     }
   },
 
