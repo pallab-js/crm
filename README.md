@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OpenCRM
+
+A free, open-source CRM desktop application for macOS Apple Silicon, built with Tauri v2 + Next.js 14.
+
+## Features
+
+- **Dashboard** — Real-time overview of your sales pipeline
+- **Contacts** — Manage customers with tags, notes, and email tracking
+- **Companies** — Track company profiles and associations
+- **Deals** — Kanban board with probability-based deal tracking
+- **Tasks** — Todo management with recurring task support
+- **Calendar** — Monthly calendar view for scheduling
+- **Analytics** — Visual charts and performance metrics
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- macOS Apple Silicon (M1/M2/M3)
+- Node.js 20+
+- Rust toolchain
+- pnpm
+
+### Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Clone the repository
+git clone https://github.com/yourusername/opencrm.git
+cd opencrm
+
+# Install dependencies
+pnpm install
+
+# Run in development mode
+pnpm tauri dev
+
+# Build for production
+pnpm tauri build --target aarch64-apple-darwin
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Keyboard Shortcuts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Key | Action |
+|-----|--------|
+| 1 | Dashboard |
+| 2 | Contacts |
+| 3 | Companies |
+| 4 | Deals |
+| 5 | Tasks |
+| 6 | Calendar |
+| 7 | Analytics |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech Stack
 
-## Learn More
+- **Frontend**: Next.js 14, React, TailwindCSS
+- **Backend**: Rust, Tauri v2
+- **State**: Zustand
+- **Charts**: Recharts
+- **Persistence**: @tauri-apps/plugin-fs
 
-To learn more about Next.js, take a look at the following resources:
+## Design
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+OpenCRM uses a Supabase-inspired dark-mode design system. See [DESIGN.md](./DESIGN.md) for the complete design reference.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
+Licensed under either of:
+- Apache License, Version 2.0 ([LICENSE-APACHE](./LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](./LICENSE-MIT))
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contributing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+## Code of Conduct
+
+Please read our [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) to keep our community approachable and respectable.

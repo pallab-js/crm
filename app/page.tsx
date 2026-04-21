@@ -1,65 +1,169 @@
-import Image from "next/image";
+'use client'
+import { useEffect, useCallback } from 'react'
+import { useAppStore } from '@/store/dashboard'
+import { StatCard } from '@/components/dashboard/StatCard'
+import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
+import { Nav } from '@/components/ui/Nav'
+import { Sidebar, SidebarItem } from '@/components/ui/Sidebar'
+import { QuickAddFAB } from '@/components/ui/QuickAddFAB'
+import { ContactsPage } from '@/components/pages/ContactsPage'
+import { CompaniesPage } from '@/components/pages/CompaniesPage'
+import { DealsPage } from '@/components/pages/DealsPage'
+import { TasksPage } from '@/components/pages/TasksPage'
+import { CalendarPage } from '@/components/pages/CalendarPage'
+import { AnalyticsPage } from '@/components/pages/AnalyticsPage'
 
-export default function Home() {
+function DashboardView() {
+  const { contacts, deals, tasks, dashboard } = useAppStore()
+
+  const stats = [
+    { label: 'Total Contacts', value: String(contacts.length), delta: contacts.length > 0 ? 100 : 0 },
+    { label: 'Active Deals', value: String(deals.filter(d => d.stage !== 'closed_won' && d.stage !== 'closed_lost').length), delta: deals.length > 0 ? 50 : 0 },
+    { label: 'Tasks Done', value: String(tasks.filter(t => t.status === 'done').length), delta: tasks.length > 0 ? Math.round((tasks.filter(t => t.status === 'done').length / tasks.length) * 100) : 0 },
+  ]
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="space-y-12">
+      <section>
+        <h1 className="text-[72px] leading-[1.00] font-normal text-text-primary">
+          Dashboard
+        </h1>
+        <p className="text-text-secondary mt-4 max-w-xl">
+          Your CRM at a glance.
+        </p>
+      </section>
+
+      <section>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {stats.map((s, i) => <StatCard key={i} {...s} />)}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </section>
+
+      <section>
+        <ActivityFeed items={dashboard.recent} />
+      </section>
     </div>
-  );
+  )
+}
+
+export default function HomePage() {
+  const { currentView, setCurrentView, load } = useAppStore()
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+    
+    if (e.key === '1') setCurrentView('dashboard')
+    else if (e.key === '2') setCurrentView('contacts')
+    else if (e.key === '3') setCurrentView('companies')
+    else if (e.key === '4') setCurrentView('deals')
+    else if (e.key === '5') setCurrentView('tasks')
+    else if (e.key === '6') setCurrentView('calendar')
+    else if (e.key === '7') setCurrentView('analytics')
+  }, [setCurrentView])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    document.title = `OpenCRM - ${currentView.charAt(0).toUpperCase() + currentView.slice(1)}`
+  }, [currentView])
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
+
+  const renderView = () => {
+    switch (currentView) {
+      case 'contacts':
+        return <ContactsPage />
+      case 'companies':
+        return <CompaniesPage />
+      case 'deals':
+        return <DealsPage />
+      case 'tasks':
+        return <TasksPage />
+      case 'calendar':
+        return <CalendarPage />
+      case 'analytics':
+        return <AnalyticsPage />
+      default:
+        return <DashboardView />
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-bg flex">
+      <Sidebar>
+        <div className="mb-6">
+          <div className="flex items-center gap-2 px-4 py-2">
+            <div className="w-6 h-6 rounded bg-brand flex items-center justify-center">
+              <span className="text-bg-deep text-sm font-bold">O</span>
+            </div>
+            <span className="text-text-primary text-[14px] font-medium">OpenCRM</span>
+          </div>
+        </div>
+        <nav className="space-y-1">
+          <SidebarItem 
+            href="#" 
+            active={currentView === 'dashboard'} 
+            onClick={() => setCurrentView('dashboard')}
+          >
+            Dashboard <span className="text-text-muted text-xs ml-2">1</span>
+          </SidebarItem>
+          <SidebarItem 
+            href="#" 
+            active={currentView === 'contacts'} 
+            onClick={() => setCurrentView('contacts')}
+          >
+            Contacts <span className="text-text-muted text-xs ml-2">2</span>
+          </SidebarItem>
+          <SidebarItem 
+            href="#" 
+            active={currentView === 'companies'} 
+            onClick={() => setCurrentView('companies')}
+          >
+            Companies <span className="text-text-muted text-xs ml-2">3</span>
+          </SidebarItem>
+          <SidebarItem 
+            href="#" 
+            active={currentView === 'deals'} 
+            onClick={() => setCurrentView('deals')}
+          >
+            Deals <span className="text-text-muted text-xs ml-2">4</span>
+          </SidebarItem>
+          <SidebarItem 
+            href="#" 
+            active={currentView === 'tasks'} 
+            onClick={() => setCurrentView('tasks')}
+          >
+            Tasks <span className="text-text-muted text-xs ml-2">5</span>
+          </SidebarItem>
+          <SidebarItem 
+            href="#" 
+            active={currentView === 'calendar'} 
+            onClick={() => setCurrentView('calendar')}
+          >
+            Calendar <span className="text-text-muted text-xs ml-2">6</span>
+          </SidebarItem>
+          <SidebarItem 
+            href="#" 
+            active={currentView === 'analytics'} 
+            onClick={() => setCurrentView('analytics')}
+          >
+            Analytics <span className="text-text-muted text-xs ml-2">7</span>
+          </SidebarItem>
+        </nav>
+        <div className="absolute bottom-4 left-4 text-text-muted text-xs">
+          Press 1-7 to navigate
+        </div>
+      </Sidebar>
+      <div className="flex-1">
+        <Nav />
+        <div className="px-6 py-12 max-w-7xl mx-auto">
+          {renderView()}
+        </div>
+        <QuickAddFAB />
+      </div>
+    </main>
+  )
 }
