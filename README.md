@@ -64,9 +64,7 @@ OpenCRM uses a Supabase-inspired dark-mode design system. See [DESIGN.md](./DESI
 
 ## License
 
-Licensed under either of:
-- Apache License, Version 2.0 ([LICENSE-APACHE](./LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](./LICENSE-MIT))
+MIT License ([LICENSE-MIT](./LICENSE-MIT))
 
 ## Contributing
 
