@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAppStore } from '@/store/dashboard'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -8,11 +8,14 @@ import { Contact } from '@/lib/ipc'
 import { validateContact, isValidEmail, isValidName, isValidPhone } from '@/lib/validation'
 import { formatDate, ITEMS_PER_PAGE } from '@/lib/constants'
 import { Pagination } from '@/components/ui/Pagination'
+import { useDebounce } from '@/lib/useDebounce'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 export function ContactsPage() {
   const { contacts, companies, notes, emails, settings, addContact, updateContact, deleteContact, addNote, deleteNote, addEmail } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [mergeMode, setMergeMode] = useState(false)
@@ -22,6 +25,7 @@ export function ContactsPage() {
   const [emailForm, setEmailForm] = useState({ subject: '', body: '' })
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [currentPage, setCurrentPage] = useState(1)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -155,13 +159,17 @@ export function ContactsPage() {
   const getContactNotes = (contactId: string) => notes.filter(n => n.contact_id === contactId)
   const getContactEmails = (contactId: string) => emails.filter(e => e.contact_id === contactId)
 
-  const filteredContacts = contacts.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email.toLowerCase().includes(search.toLowerCase()) ||
-    getCompanyName(c.company_id).toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredContacts = useMemo(() => contacts.filter(c => 
+    c.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    c.email.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    getCompanyName(c.company_id).toLowerCase().includes(debouncedSearch.toLowerCase())
+  ), [contacts, debouncedSearch, companies])
+
   useEffect(() => setCurrentPage(1), [search])
-  const paginatedContacts = filteredContacts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  const paginatedContacts = useMemo(() => 
+    filteredContacts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [filteredContacts, currentPage]
+  )
 
   const statusColors: Record<string, string> = {
     lead: 'text-text-secondary',
@@ -195,7 +203,7 @@ export function ContactsPage() {
           placeholder="Search contacts..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full bg-bg-deep border border-border-base rounded-sm px-4 py-2 pl-10 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none"
+          className="w-full bg-bg-deep border border-border-base rounded-[6px] px-4 py-2 pl-10 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none"
         />
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -213,9 +221,9 @@ export function ContactsPage() {
                   required
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full bg-bg-deep border rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none ${validationErrors.name ? 'border-red-500' : 'border-border-base'}`}
+                  className={`w-full bg-bg-deep border rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none ${validationErrors.name ? 'border-red-500' : 'border-border-base'}`}
                 />
-                {validationErrors.name && <p className="text-red-500 text-xs mt-1">{validationErrors.name}</p>}
+                {validationErrors.name && <p className="text-[hsl(348,75%,58%)] text-xs mt-1">{validationErrors.name}</p>}
               </div>
               <div>
                 <label className="block text-text-muted text-sm mb-1">Email</label>
@@ -224,9 +232,9 @@ export function ContactsPage() {
                   required
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className={`w-full bg-bg-deep border rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none ${validationErrors.email ? 'border-red-500' : 'border-border-base'}`}
+                  className={`w-full bg-bg-deep border rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none ${validationErrors.email ? 'border-red-500' : 'border-border-base'}`}
                 />
-                {validationErrors.email && <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>}
+                {validationErrors.email && <p className="text-[hsl(348,75%,58%)] text-xs mt-1">{validationErrors.email}</p>}
               </div>
               <div>
                 <label className="block text-text-muted text-sm mb-1">Phone</label>
@@ -234,7 +242,7 @@ export function ContactsPage() {
                   type="tel"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
               </div>
               <div>
@@ -242,7 +250,7 @@ export function ContactsPage() {
                 <select
                   value={formData.company_id}
                   onChange={e => setFormData({ ...formData, company_id: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 >
                   <option value="">Select company</option>
                   {companies.map(c => (
@@ -255,7 +263,7 @@ export function ContactsPage() {
                 <select
                   value={formData.status}
                   onChange={e => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 >
                   <option value="lead">Lead</option>
                   <option value="customer">Customer</option>
@@ -270,7 +278,7 @@ export function ContactsPage() {
                       key={tag}
                       type="button"
                       onClick={() => toggleTag(tag)}
-                      className={`px-2 py-1 rounded-sm text-xs border ${
+                      className={`px-2 py-1 rounded-[6px] text-xs border ${
                         formData.tags.includes(tag)
                           ? 'bg-brand/20 border-brand text-brand'
                           : 'border-border-base text-text-muted hover:border-brand'
@@ -298,12 +306,6 @@ export function ContactsPage() {
         </Card>
       ) : (
         <>
-          <Pagination
-            currentPage={currentPage}
-            totalItems={filteredContacts.length}
-            itemsPerPage={ITEMS_PER_PAGE}
-            onPageChange={setCurrentPage}
-          />
           <div className="grid gap-4">
             {paginatedContacts.map(contact => {
             const companyName = getCompanyName(contact.company_id)
@@ -323,7 +325,7 @@ export function ContactsPage() {
                     <span className="text-brand font-medium">{contact.name.charAt(0).toUpperCase()}</span>
                   </button>
                   <div>
-                    <p className="text-text-primary font-medium">{contact.name}</p>
+                    <p className="text-text-primary">{contact.name}</p>
                     <p className="text-text-muted text-sm">{contact.email} {companyName && `· ${companyName}`}</p>
                     {contact.tags && contact.tags.length > 0 && (
                       <div className="flex gap-1 mt-1">
@@ -338,30 +340,46 @@ export function ContactsPage() {
                   <div className="flex items-center gap-4">
                     <Badge className={statusColors[contact.status]}>{contact.status}</Badge>
                     <button onClick={() => handleEdit(contact)} className="text-text-muted hover:text-brand transition-colors">Edit</button>
-                    <button onClick={() => deleteContact(contact.id)} className="text-text-muted hover:text-red-500 transition-colors">Delete</button>
+                    <button onClick={() => setConfirmDelete(contact.id)} className="text-text-muted hover:text-[hsl(348,75%,58%)] transition-colors">Delete</button>
                   </div>
                 )}
               </Card>
             )
           })}
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredContacts.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+          />
         </>
       )}
 
       {selectedContact && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedContact(null)}>
-          <div className="bg-bg border border-border-base rounded-card p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setSelectedContact(null)}
+          onKeyDown={e => e.key === 'Escape' && setSelectedContact(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Contact: ${selectedContact.name}`}
+            className="bg-bg border border-border-base rounded-[8px] p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-brand/20 flex items-center justify-center">
                   <span className="text-brand font-medium text-lg">{selectedContact.name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
-                  <h2 className="text-text-primary font-medium text-lg">{selectedContact.name}</h2>
+                  <h2 className="text-text-primary text-lg">{selectedContact.name}</h2>
                   <Badge className={statusColors[selectedContact.status]}>{selectedContact.status}</Badge>
                 </div>
               </div>
-              <button onClick={() => setSelectedContact(null)} className="text-text-muted hover:text-text-primary">×</button>
+              <button aria-label="Close" onClick={() => setSelectedContact(null)} className="text-text-muted hover:text-text-primary">×</button>
             </div>
             
             <div className="space-y-3 mb-6">
@@ -405,14 +423,14 @@ export function ContactsPage() {
                     placeholder="Subject"
                     value={emailForm.subject}
                     onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })}
-                    className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary"
+                    className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary"
                   />
                   <textarea
                     placeholder="Message"
                     rows={4}
                     value={emailForm.body}
                     onChange={e => setEmailForm({ ...emailForm, body: e.target.value })}
-                    className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary"
+                    className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary"
                   />
                   <Button onClick={handleSendEmail}>Send</Button>
                 </div>
@@ -423,7 +441,7 @@ export function ContactsPage() {
               <h3 className="text-text-primary font-medium mb-3">Emails ({getContactEmails(selectedContact.id).length})</h3>
               <div className="space-y-2 mb-4">
                 {getContactEmails(selectedContact.id).slice(0, 3).map(email => (
-                  <div key={email.id} className="bg-bg-deep rounded-sm p-3">
+                  <div key={email.id} className="bg-bg-deep rounded-[6px] p-3">
                     <p className="text-text-primary text-sm font-medium">{email.subject}</p>
                     <p className="text-text-muted text-xs mt-1">{new Date(email.created_at).toLocaleDateString()}</p>
                   </div>
@@ -436,11 +454,11 @@ export function ContactsPage() {
               
               <div className="space-y-2 mb-4">
                 {getContactNotes(selectedContact.id).map(note => (
-                  <div key={note.id} className="bg-bg-deep rounded-sm p-3">
+                  <div key={note.id} className="bg-bg-deep rounded-[6px] p-3">
                     <p className="text-text-primary text-sm">{note.content}</p>
                     <div className="flex items-center justify-between mt-2">
                       <p className="text-text-muted text-xs">{new Date(note.created_at).toLocaleDateString()}</p>
-                      <button onClick={() => deleteNote(note.id)} className="text-text-muted hover:text-red-500 text-xs">Delete</button>
+                      <button onClick={() => deleteNote(note.id)} className="text-text-muted hover:text-[hsl(348,75%,58%)] text-xs">Delete</button>
                     </div>
                   </div>
                 ))}
@@ -453,13 +471,21 @@ export function ContactsPage() {
                   value={newNote}
                   onChange={e => setNewNote(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAddNote()}
-                  className="flex-1 bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none text-sm"
+                  className="flex-1 bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none text-sm"
                 />
                 <Button onClick={handleAddNote}>Add</Button>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          message="Delete this contact? This cannot be undone."
+          onConfirm={() => { deleteContact(confirmDelete); setConfirmDelete(null) }}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

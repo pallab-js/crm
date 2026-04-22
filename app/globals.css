@@ -51,6 +51,20 @@
   --shadow-focus: rgba(0, 0, 0, 0.1) 0px 4px 12px;
 }
 
+/* Light theme override — applied when <html data-theme="light"> */
+[data-theme="light"] {
+  --bg-deep: #f5f5f5;
+  --bg-page: #ffffff;
+  --text-primary: #0f0f0f;
+  --text-secondary: #434343;
+  --text-muted: #898989;
+  --border-subtle: #e0e0e0;
+  --border-base: #d4d4d4;
+  --border-prominent: #c0c0c0;
+  --border-heavy: #b4b4b4;
+  --glass-dark: rgba(245, 245, 245, 0.84);
+}
+
 * {
   box-sizing: border-box;
 }

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { DEAL_STAGES, STAGE_COLORS, formatDate, formatCurrency, ITEMS_PER_PAGE } from '@/lib/constants'
 import { validateDeal } from '@/lib/validation'
 import { Pagination } from '@/components/ui/Pagination'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface DealCardProps {
   deal: { id: string; title: string; value: number; stage: string; probability: number; contact_id: string; created_at: string }
@@ -18,21 +19,21 @@ interface DealCardProps {
 function DealCard({ deal, onMove, onDelete, getContactName }: DealCardProps) {
   const weightedValue = Math.round(deal.value * (deal.probability / 100))
   return (
-    <div className={`bg-bg border-l-4 ${STAGE_COLORS[deal.stage]?.border || 'border-text-muted'} ${STAGE_COLORS[deal.stage]?.bg || 'bg-text-muted/10'} rounded-sm p-3 mb-2`}>
-      <p className="text-text-primary font-medium text-sm">{deal.title}</p>
+    <div className={`bg-bg border-l-4 ${STAGE_COLORS[deal.stage]?.border || 'border-text-muted'} ${STAGE_COLORS[deal.stage]?.bg || 'bg-text-muted/10'} rounded-[6px] p-3 mb-2`}>
+      <p className="text-text-primary text-sm">{deal.title}</p>
       <p className="text-text-muted text-xs mt-1">
         {deal.contact_id && getContactName(deal.contact_id)}
       </p>
       <div className="flex items-center justify-between mt-2">
         <div>
-          <span className="text-text-primary font-medium text-sm">${deal.value.toLocaleString()}</span>
+          <span className="text-text-primary text-sm">${deal.value.toLocaleString()}</span>
           <span className="text-text-muted text-xs ml-2">({deal.probability}% → ${weightedValue.toLocaleString()})</span>
         </div>
         <div className="flex gap-1">
           <select
             value={deal.stage}
             onChange={e => onMove(deal.id, { stage: e.target.value })}
-            className="bg-bg-deep border border-border-base rounded-sm px-1 py-0.5 text-[10px] text-text-primary"
+            className="bg-bg-deep border border-border-base rounded-[6px] px-1 py-0.5 text-[10px] text-text-primary"
             onClick={e => e.stopPropagation()}
           >
             {DEAL_STAGES.map(stage => (
@@ -40,8 +41,9 @@ function DealCard({ deal, onMove, onDelete, getContactName }: DealCardProps) {
             ))}
           </select>
           <button
+            aria-label={`Remove deal: ${deal.title}`}
             onClick={() => onDelete(deal.id)}
-            className="text-text-muted hover:text-red-500 transition-colors text-xs"
+            className="text-text-muted hover:text-[hsl(348,75%,58%)] transition-colors text-xs"
           >
             ×
           </button>
@@ -52,18 +54,20 @@ function DealCard({ deal, onMove, onDelete, getContactName }: DealCardProps) {
 }
 
 export function DealsPage() {
-  const { deals, contacts, addDeal, updateDeal, deleteDeal } = useAppStore()
+  const { deals, contacts, companies, addDeal, updateDeal, deleteDeal } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [currentPage, setCurrentPage] = useState(1)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     value: 0,
     stage: 'lead',
     probability: 10,
     contact_id: '',
+    company_id: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,10 +82,11 @@ export function DealsPage() {
     await addDeal({
       id: crypto.randomUUID(),
       ...formData,
+      company_id: formData.company_id || undefined,
       created_at: now,
       updated_at: now,
     })
-    setFormData({ title: '', value: 0, stage: 'lead', probability: 10, contact_id: '' })
+    setFormData({ title: '', value: 0, stage: 'lead', probability: 10, contact_id: '', company_id: '' })
     setShowForm(false)
   }
 
@@ -159,7 +164,7 @@ export function DealsPage() {
           placeholder="Search deals..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full bg-bg-deep border border-border-base rounded-sm px-4 py-2 pl-10 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none"
+          className="w-full bg-bg-deep border border-border-base rounded-[6px] px-4 py-2 pl-10 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none"
         />
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -177,7 +182,7 @@ export function DealsPage() {
                   required
                   value={formData.title}
                   onChange={e => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
               </div>
               <div>
@@ -188,7 +193,7 @@ export function DealsPage() {
                   min="0"
                   value={formData.value}
                   onChange={e => setFormData({ ...formData, value: Number(e.target.value) })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
               </div>
               <div>
@@ -196,7 +201,7 @@ export function DealsPage() {
                 <select
                   value={formData.stage}
                   onChange={e => setFormData({ ...formData, stage: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 >
                   {DEAL_STAGES.map(stage => (
                     <option key={stage} value={stage}>{stage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
@@ -208,10 +213,23 @@ export function DealsPage() {
                 <select
                   value={formData.contact_id}
                   onChange={e => setFormData({ ...formData, contact_id: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 >
                   <option value="">Select contact</option>
                   {contacts.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-text-muted text-sm mb-1">Company</label>
+                <select
+                  value={formData.company_id}
+                  onChange={e => setFormData({ ...formData, company_id: e.target.value })}
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                >
+                  <option value="">Select company</option>
+                  {companies.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
@@ -223,7 +241,7 @@ export function DealsPage() {
       )}
 
       {viewMode === 'board' ? (
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 overflow-x-auto">
 {DEAL_STAGES.map(stage => (
               <div key={stage} className="min-h-[200px]">
                 <div className={`text-xs uppercase tracking-wider text-text-muted mb-2 pb-2 border-b ${STAGE_COLORS[stage]?.border || 'border-text-muted'}`}>
@@ -251,39 +269,33 @@ export function DealsPage() {
         </Card>
       ) : (
         <>
-          <Pagination
-            currentPage={currentPage}
-            totalItems={filteredDeals.length}
-            itemsPerPage={ITEMS_PER_PAGE}
-            onPageChange={setCurrentPage}
-          />
           <div className="space-y-4">
             {paginatedDeals.map(deal => (
             <Card key={deal.id}>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-text-primary font-medium text-lg">{deal.title}</p>
+                  <p className="text-text-primary text-lg">{deal.title}</p>
                   <p className="text-text-muted text-sm">
                     {deal.contact_id && getContactName(deal.contact_id)} · {formatDate(deal.created_at)}
                   </p>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <p className="text-text-primary font-medium">${deal.value.toLocaleString()}</p>
+                    <p className="text-text-primary">${deal.value.toLocaleString()}</p>
                     <Badge>{deal.stage.replace('_', ' ')}</Badge>
                   </div>
                   <select
                     value={deal.stage}
                     onChange={e => updateDeal(deal.id, { stage: e.target.value })}
-                    className="bg-bg-deep border border-border-base rounded-sm px-2 py-1 text-text-primary text-sm"
+                    className="bg-bg-deep border border-border-base rounded-[6px] px-2 py-1 text-text-primary text-sm"
                   >
                     {DEAL_STAGES.map(stage => (
                       <option key={stage} value={stage}>{stage.replace('_', ' ')}</option>
                     ))}
                   </select>
                   <button
-                    onClick={() => deleteDeal(deal.id)}
-                    className="text-text-muted hover:text-red-500 transition-colors"
+                    onClick={() => setConfirmDelete(deal.id)}
+                    className="text-text-muted hover:text-[hsl(348,75%,58%)] transition-colors"
                   >
                     Delete
                   </button>
@@ -291,8 +303,22 @@ export function DealsPage() {
               </div>
             </Card>
           ))}
-        </div>
+          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredDeals.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+          />
         </>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          message="Delete this deal? This cannot be undone."
+          onConfirm={() => { deleteDeal(confirmDelete); setConfirmDelete(null) }}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

@@ -12,11 +12,8 @@ export function Nav() {
     <nav className="sticky top-0 z-50 bg-bg border-b border-border-subtle px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-brand flex items-center justify-center">
-              <span className="text-bg-deep text-sm font-bold">O</span>
-            </div>
-            <span className="text-text-primary text-[14px] font-medium">OpenCRM</span>
+          <div className="text-text-muted text-[12px] font-mono uppercase tracking-[1.2px]">
+            {/* breadcrumb or page context could go here */}
           </div>
         </div>
         <div className="flex items-center gap-4">

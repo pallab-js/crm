@@ -76,7 +76,7 @@ export function AnalyticsPage() {
 
       <div className="grid grid-cols-2 gap-6">
         <Card>
-          <h3 className="text-text-primary font-medium mb-4">Activity Over Time</h3>
+          <h3 className="text-text-primary mb-4">Activity Over Time</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={monthlyData}>
               <XAxis dataKey="name" stroke="#898989" fontSize={12} />
@@ -93,7 +93,7 @@ export function AnalyticsPage() {
         </Card>
 
         <Card>
-          <h3 className="text-text-primary font-medium mb-4">Deals by Stage</h3>
+          <h3 className="text-text-primary mb-4">Deals by Stage</h3>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
@@ -118,7 +118,7 @@ export function AnalyticsPage() {
         </Card>
 
         <Card>
-          <h3 className="text-text-primary font-medium mb-4">Contacts by Status</h3>
+          <h3 className="text-text-primary mb-4">Contacts by Status</h3>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
@@ -143,7 +143,7 @@ export function AnalyticsPage() {
         </Card>
 
         <Card>
-          <h3 className="text-text-primary font-medium mb-4">Tasks Overview</h3>
+          <h3 className="text-text-primary mb-4">Tasks Overview</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={taskByStatus}>
               <XAxis dataKey="name" stroke="#898989" fontSize={12} />

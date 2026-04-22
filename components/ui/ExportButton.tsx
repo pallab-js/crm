@@ -11,14 +11,18 @@ export function ExportButton() {
   const exportCSV = (data: Record<string, unknown>[], filename: string) => {
     if (data.length === 0) return
     
+    const escapeCSV = (val: unknown): string => {
+      const s = String(val ?? '')
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return `"${s.replace(/"/g, '""')}"`
+      }
+      return s
+    }
+
     const headers = Object.keys(data[0])
     const csv = [
       headers.join(','),
-      ...data.map(row => headers.map(h => {
-        const val = row[h]
-        if (typeof val === 'string' && val.includes(',')) return `"${val}"`
-        return String(val ?? '')
-      }).join(','))
+      ...data.map(row => headers.map(h => escapeCSV(row[h])).join(','))
     ].join('\n')
 
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -35,7 +39,7 @@ export function ExportButton() {
     <div className="relative">
       <Button onClick={() => setShowMenu(!showMenu)}>Export</Button>
       {showMenu && (
-        <div className="absolute right-0 mt-2 bg-bg border border-border-base rounded-sm shadow-lg z-10 min-w-[150px]">
+        <div className="absolute right-0 mt-2 bg-bg border border-border-base rounded-[6px] z-10 min-w-[150px]">
           <button
             onClick={() => exportCSV(contacts.map(c => ({ name: c.name, email: c.email, phone: c.phone, status: c.status })), 'contacts')}
             className="w-full text-left px-4 py-2 text-text-primary hover:bg-bg-deep text-sm"

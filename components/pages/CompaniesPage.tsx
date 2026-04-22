@@ -4,12 +4,16 @@ import { useAppStore } from '@/store/dashboard'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { validateCompany } from '@/lib/validation'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 export function CompaniesPage() {
   const { companies, contacts, deals, addCompany, updateCompany, deleteCompany } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     domain: '',
@@ -20,6 +24,12 @@ export function CompaniesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const errors = validateCompany({ name: formData.name, domain: formData.domain })
+    if (errors.length > 0) {
+      setValidationErrors(Object.fromEntries(errors.map(err => [err.field, err.message])))
+      return
+    }
+    setValidationErrors({})
     const now = new Date().toISOString()
     if (editingId) {
       await updateCompany(editingId, formData)
@@ -84,7 +94,7 @@ export function CompaniesPage() {
           placeholder="Search companies..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full bg-bg-deep border border-border-base rounded-sm px-4 py-2 pl-10 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none"
+          className="w-full bg-bg-deep border border-border-base rounded-[6px] px-4 py-2 pl-10 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none"
         />
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -102,8 +112,9 @@ export function CompaniesPage() {
                   required
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className={`w-full bg-bg-deep border rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none ${validationErrors.name ? 'border-[hsl(348,75%,58%)]' : 'border-border-base'}`}
                 />
+                {validationErrors.name && <p className="text-[hsl(348,75%,58%)] text-xs mt-1">{validationErrors.name}</p>}
               </div>
               <div>
                 <label className="block text-text-muted text-sm mb-1">Domain</label>
@@ -112,7 +123,7 @@ export function CompaniesPage() {
                   placeholder="example.com"
                   value={formData.domain}
                   onChange={e => setFormData({ ...formData, domain: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
               </div>
               <div>
@@ -121,7 +132,7 @@ export function CompaniesPage() {
                   type="text"
                   value={formData.industry}
                   onChange={e => setFormData({ ...formData, industry: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
               </div>
               <div>
@@ -130,7 +141,7 @@ export function CompaniesPage() {
                   type="tel"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
               </div>
               <div className="col-span-2">
@@ -139,7 +150,7 @@ export function CompaniesPage() {
                   type="text"
                   value={formData.address}
                   onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
               </div>
             </div>
@@ -168,32 +179,40 @@ export function CompaniesPage() {
                     <span className="text-brand font-medium text-lg">{company.name.charAt(0).toUpperCase()}</span>
                   </div>
                   <div>
-                    <p className="text-text-primary font-medium text-lg">{company.name}</p>
+                    <p className="text-text-primary text-lg">{company.name}</p>
                     <p className="text-text-muted text-sm">{company.domain} {company.industry && `· ${company.industry}`}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex gap-4 text-sm">
                     <div className="text-center">
-                      <p className="text-text-primary font-medium">{stats.contacts}</p>
+                      <p className="text-text-primary">{stats.contacts}</p>
                       <p className="text-text-muted text-xs">Contacts</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-text-primary font-medium">{stats.deals}</p>
+                      <p className="text-text-primary">{stats.deals}</p>
                       <p className="text-text-muted text-xs">Deals</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-brand font-medium">${stats.revenue.toLocaleString()}</p>
+                      <p className="text-brand">${stats.revenue.toLocaleString()}</p>
                       <p className="text-text-muted text-xs">Revenue</p>
                     </div>
                   </div>
                   <button onClick={() => handleEdit(company)} className="text-text-muted hover:text-brand transition-colors">Edit</button>
-                  <button onClick={() => deleteCompany(company.id)} className="text-text-muted hover:text-red-500 transition-colors">Delete</button>
+                  <button onClick={() => setConfirmDelete(company.id)} className="text-text-muted hover:text-[hsl(348,75%,58%)] transition-colors">Delete</button>
                 </div>
               </Card>
             )
           })}
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          message="Delete this company? This cannot be undone."
+          onConfirm={() => { deleteCompany(confirmDelete); setConfirmDelete(null) }}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

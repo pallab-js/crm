@@ -38,6 +38,17 @@ pnpm tauri dev
 pnpm tauri build --target aarch64-apple-darwin
 ```
 
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Run Next.js dev server |
+| `pnpm tauri dev` | Run Tauri in dev mode |
+| `pnpm build` | Production build (static export) |
+| `pnpm tauri build` | Build Tauri app |
+| `pnpm test` | Run tests (vitest) |
+| `pnpm lint` | Run linting |
+
 ### Keyboard Shortcuts
 
 | Key | Action |
@@ -52,11 +63,12 @@ pnpm tauri build --target aarch64-apple-darwin
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React, TailwindCSS
+- **Frontend**: Next.js 16, React 19, TailwindCSS v4
 - **Backend**: Rust, Tauri v2
-- **State**: Zustand
+- **State**: Zustand 5
 - **Charts**: Recharts
 - **Persistence**: @tauri-apps/plugin-fs
+- **Testing**: Vitest
 
 ## Design
 

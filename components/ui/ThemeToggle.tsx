@@ -20,7 +20,7 @@ export function ThemeToggle() {
         Theme
       </Button>
       {showMenu && (
-        <div className="absolute right-0 mt-2 bg-bg border border-border-base rounded-sm shadow-lg z-10 min-w-[120px]">
+        <div className="absolute right-0 mt-2 bg-bg border border-border-base rounded-[6px] z-10 min-w-[120px]">
           <button
             onClick={() => { updateSettings({ theme: 'dark' }); setShowMenu(false) }}
             className={`w-full text-left px-4 py-2 text-sm ${settings.theme === 'dark' ? 'text-brand' : 'text-text-primary hover:bg-bg-deep'}`}

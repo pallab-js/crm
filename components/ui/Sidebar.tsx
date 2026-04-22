@@ -25,7 +25,7 @@ export function SidebarItem({ href, active = false, onClick, children }: {
         e.preventDefault()
         onClick?.()
       }}
-      className={`block px-4 py-2 rounded-sm text-[14px] font-medium transition-colors cursor-pointer ${
+      className={`block px-4 py-2 rounded-[6px] text-[14px] font-medium transition-colors cursor-pointer ${
         active
           ? 'bg-bg-deep text-text-primary border border-border-prominent'
           : 'text-text-muted hover:text-text-primary hover:bg-bg-deep'

@@ -45,7 +45,7 @@ export function CalendarPage() {
               key={task.id}
               className={`text-[10px] px-1 py-0.5 rounded truncate ${
                 task.status === 'done' ? 'bg-brand/20 text-brand line-through' :
-                task.status === 'in_progress' ? 'bg-yellow-400/20 text-yellow-400' :
+                task.status === 'in_progress' ? 'bg-[hsl(53,92%,50%)]/20 text-[hsl(53,92%,50%)]' :
                 'bg-text-muted/20 text-text-muted'
               }`}
             >
@@ -80,7 +80,7 @@ export function CalendarPage() {
         </Card>
         <Card>
           <p className="text-text-muted text-sm">Overdue</p>
-          <p className="text-[36px] text-red-400">{overdueCount}</p>
+          <p className="text-[36px] text-[hsl(348,75%,58%)]">{overdueCount}</p>
         </Card>
         <Card>
           <p className="text-text-muted text-sm">Due This Week</p>

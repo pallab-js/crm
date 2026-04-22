@@ -29,6 +29,7 @@ interface AppStore extends AppData {
   updateTask: (id: string, task: Partial<Task>) => Promise<void>
   deleteTask: (id: string) => Promise<void>
   updateSettings: (settings: Partial<AppSettings>) => Promise<void>
+  batchAdd: (type: 'contacts' | 'deals' | 'tasks', records: (Contact | Deal | Task)[]) => Promise<void>
   setCurrentView: (view: string) => void
 }
 
@@ -54,11 +55,33 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const data = await fetchAppData()
       set({ ...data, loading: false })
+      document.documentElement.setAttribute('data-theme', data.settings.theme ?? 'dark')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load data'
       console.error('[OpenCRM] Load error:', msg)
       set({ loading: false, error: msg })
     }
+  },
+
+  batchAdd: async (type: 'contacts' | 'deals' | 'tasks', records: (Contact | Deal | Task)[]) => {
+    if (type === 'contacts') {
+      set({ contacts: [...get().contacts, ...(records as Contact[])] })
+    } else if (type === 'deals') {
+      set({ deals: [...get().deals, ...(records as Deal[])] })
+    } else if (type === 'tasks') {
+      set({ tasks: [...get().tasks, ...(records as Task[])] })
+    }
+    const s = get()
+    await saveAppData({
+      dashboard: s.dashboard,
+      companies: s.companies,
+      contacts: s.contacts,
+      notes: s.notes,
+      emails: s.emails,
+      deals: s.deals,
+      tasks: s.tasks,
+      settings: s.settings,
+    })
   },
 
   addCompany: async (company: Company) => {
@@ -367,6 +390,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
   updateSettings: async (updates: Partial<AppSettings>) => {
     const settings = { ...get().settings, ...updates }
     set({ settings })
+    if (settings.theme) {
+      document.documentElement.setAttribute('data-theme', settings.theme)
+    }
     await saveAppData({
       dashboard: get().dashboard,
       companies: get().companies,

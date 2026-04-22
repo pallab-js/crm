@@ -9,9 +9,10 @@ interface ImportResult {
 }
 
 export function ImportButton() {
-  const { addContact, addDeal, addTask } = useAppStore()
+  const { addContact, addDeal, addTask, batchAdd } = useAppStore()
   const [showMenu, setShowMenu] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ count: number; type: string } | null>(null)
 
   const parseCSV = (text: string): Record<string, string>[] => {
     const lines = text.trim().split('\n')
@@ -35,36 +36,45 @@ export function ImportButton() {
     setImporting(true)
     const text = await file.text()
     const data = parseCSV(text)
-    const now = new Date().toISOString()
     
+    const now = new Date().toISOString()
     let count = 0
-    for (const row of data) {
-      if (type === 'contacts' && row.name && row.email) {
-        await addContact({
+
+    if (type === 'contacts') {
+      const records = data
+        .filter(row => row.name && row.email)
+        .map(row => ({
           id: crypto.randomUUID(),
           name: row.name,
           email: row.email,
           phone: row.phone || '',
-          status: row.status || 'lead',
+          status: (row.status as string) || 'lead',
           tags: row.tags ? row.tags.split(';') : [],
           created_at: now,
           updated_at: now,
-        })
-        count++
-      } else if (type === 'deals' && row.title && row.value) {
-        await addDeal({
+        }))
+      count = records.length
+      await batchAdd('contacts', records)
+    } else if (type === 'deals') {
+      const records = data
+        .filter(row => row.title && row.value)
+        .map(row => ({
           id: crypto.randomUUID(),
           title: row.title,
           value: parseFloat(row.value) || 0,
           stage: row.stage || 'lead',
           probability: parseInt(row.probability) || 10,
           contact_id: row.contact_id || '',
+          company_id: row.company_id || undefined,
           created_at: now,
           updated_at: now,
-        })
-        count++
-      } else if (type === 'tasks' && row.title) {
-        await addTask({
+        }))
+      count = records.length
+      await batchAdd('deals', records)
+    } else if (type === 'tasks') {
+      const records = data
+        .filter(row => row.title)
+        .map(row => ({
           id: crypto.randomUUID(),
           title: row.title,
           description: row.description || '',
@@ -73,14 +83,15 @@ export function ImportButton() {
           recurring: row.recurring || undefined,
           created_at: now,
           updated_at: now,
-        })
-        count++
-      }
+        }))
+      count = records.length
+      await batchAdd('tasks', records)
     }
-    
+
     setImporting(false)
     setShowMenu(false)
-    alert(`Imported ${count} ${type}`)
+    setImportResult({ count, type })
+    setTimeout(() => setImportResult(null), 4000)
     e.target.value = ''
   }
 
@@ -90,7 +101,7 @@ export function ImportButton() {
         {importing ? 'Importing...' : 'Import'}
       </Button>
       {showMenu && (
-        <div className="absolute right-0 mt-2 bg-bg border border-border-base rounded-sm shadow-lg z-10 min-w-[180px]">
+        <div className="absolute right-0 mt-2 bg-bg border border-border-base rounded-[6px] z-10 min-w-[180px]">
           <label className="block w-full text-left px-4 py-2 text-text-primary hover:bg-bg-deep text-sm cursor-pointer">
             Import Contacts CSV
             <input type="file" accept=".csv" className="hidden" onChange={e => handleFile(e, 'contacts')} />
@@ -103,6 +114,11 @@ export function ImportButton() {
             Import Tasks CSV
             <input type="file" accept=".csv" className="hidden" onChange={e => handleFile(e, 'tasks')} />
           </label>
+        </div>
+      )}
+      {importResult && (
+        <div className="absolute right-0 mt-2 bg-bg border border-border-prominent rounded-[6px] px-4 py-2 text-sm text-brand z-20">
+          ✓ Imported {importResult.count} {importResult.type}
         </div>
       )}
     </div>

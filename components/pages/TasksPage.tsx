@@ -1,18 +1,22 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAppStore } from '@/store/dashboard'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { isValidName } from '@/lib/validation'
 
 const TASK_STATUSES = ['todo', 'in_progress', 'done']
 const RECURRING_OPTIONS = ['', 'daily', 'weekly', 'monthly']
 
 export function TasksPage() {
-  const { tasks, contacts, addTask, updateTask, deleteTask } = useAppStore()
+  const { tasks, contacts, deals, addTask, updateTask, deleteTask } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<string>('all')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [titleError, setTitleError] = useState('')
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -20,20 +24,27 @@ export function TasksPage() {
     due_date: '',
     recurring: '',
     contact_id: '',
+    deal_id: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isValidName(formData.title)) {
+      setTitleError('Title is required')
+      return
+    }
+    setTitleError('')
     const now = new Date().toISOString()
     await addTask({
       id: crypto.randomUUID(),
       ...formData,
       recurring: formData.recurring || undefined,
       contact_id: formData.contact_id || undefined,
+      deal_id: formData.deal_id || undefined,
       created_at: now,
       updated_at: now,
     })
-    setFormData({ title: '', description: '', status: 'todo', due_date: '', recurring: '', contact_id: '' })
+    setFormData({ title: '', description: '', status: 'todo', due_date: '', recurring: '', contact_id: '', deal_id: '' })
     setShowForm(false)
   }
 
@@ -45,7 +56,7 @@ export function TasksPage() {
 
   const statusColors: Record<string, string> = {
     todo: 'text-text-muted',
-    in_progress: 'text-yellow-400',
+    in_progress: 'text-[hsl(53,92%,50%)]',
     done: 'text-brand',
   }
 
@@ -89,7 +100,7 @@ export function TasksPage() {
         </Card>
         <Card>
           <p className="text-text-muted text-sm">In Progress</p>
-          <p className="text-[36px] text-yellow-400">{inProgressCount}</p>
+          <p className="text-[36px] text-[hsl(53,92%,50%)]">{inProgressCount}</p>
         </Card>
         <Card>
           <p className="text-text-muted text-sm">Done</p>
@@ -104,7 +115,7 @@ export function TasksPage() {
             placeholder="Search tasks..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-bg-deep border border-border-base rounded-sm px-4 py-2 pl-10 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none"
+            className="w-full bg-bg-deep border border-border-base rounded-[6px] px-4 py-2 pl-10 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none"
           />
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -113,7 +124,7 @@ export function TasksPage() {
         <select
           value={filter}
           onChange={e => setFilter(e.target.value)}
-          className="bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary"
+          className="bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary"
         >
           <option value="all">All</option>
           <option value="todo">To Do</option>
@@ -133,8 +144,9 @@ export function TasksPage() {
                   required
                   value={formData.title}
                   onChange={e => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
+                {titleError && <p className="text-[hsl(348,75%,58%)] text-xs mt-1">{titleError}</p>}
               </div>
               <div>
                 <label className="block text-text-muted text-sm mb-1">Due Date</label>
@@ -142,7 +154,7 @@ export function TasksPage() {
                   type="date"
                   value={formData.due_date}
                   onChange={e => setFormData({ ...formData, due_date: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
               </div>
               <div>
@@ -150,7 +162,7 @@ export function TasksPage() {
                 <select
                   value={formData.recurring}
                   onChange={e => setFormData({ ...formData, recurring: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 >
                   <option value="">One-time</option>
                   <option value="daily">Daily</option>
@@ -163,11 +175,24 @@ export function TasksPage() {
                 <select
                   value={formData.contact_id}
                   onChange={e => setFormData({ ...formData, contact_id: e.target.value })}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 >
                   <option value="">None</option>
                   {contacts.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-text-muted text-sm mb-1">Related Deal</label>
+                <select
+                  value={formData.deal_id}
+                  onChange={e => setFormData({ ...formData, deal_id: e.target.value })}
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                >
+                  <option value="">None</option>
+                  {deals.map(d => (
+                    <option key={d.id} value={d.id}>{d.title}</option>
                   ))}
                 </select>
               </div>
@@ -177,7 +202,7 @@ export function TasksPage() {
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  className="w-full bg-bg-deep border border-border-base rounded-sm px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 />
               </div>
             </div>
@@ -223,15 +248,15 @@ export function TasksPage() {
                   <select
                     value={task.status}
                     onChange={e => updateTask(task.id, { status: e.target.value })}
-                    className="bg-bg-deep border border-border-base rounded-sm px-2 py-1 text-text-primary text-sm"
+                    className="bg-bg-deep border border-border-base rounded-[6px] px-2 py-1 text-text-primary text-sm"
                   >
                     {TASK_STATUSES.map(status => (
                       <option key={status} value={status}>{status.replace('_', ' ')}</option>
                     ))}
                   </select>
                   <button
-                    onClick={() => deleteTask(task.id)}
-                    className="text-text-muted hover:text-red-500 transition-colors"
+                    onClick={() => setConfirmDelete(task.id)}
+                    className="text-text-muted hover:text-[hsl(348,75%,58%)] transition-colors"
                   >
                     Delete
                   </button>
@@ -240,6 +265,14 @@ export function TasksPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          message="Delete this task? This cannot be undone."
+          onConfirm={() => { deleteTask(confirmDelete); setConfirmDelete(null) }}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )
