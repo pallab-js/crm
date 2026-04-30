@@ -10,9 +10,10 @@ import { formatDate, ITEMS_PER_PAGE } from '@/lib/constants'
 import { Pagination } from '@/components/ui/Pagination'
 import { useDebounce } from '@/lib/useDebounce'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { ActivityTimeline } from '@/components/ui/ActivityTimeline'
 
 export function ContactsPage() {
-  const { contacts, companies, notes, emails, settings, addContact, updateContact, deleteContact, addNote, deleteNote, addEmail } = useAppStore()
+  const { contacts, companies, notes, emails, settings, addContact, updateContact, deleteContact, addNote, deleteNote, addEmail, addTask, addDeal } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search)
@@ -22,7 +23,11 @@ export function ContactsPage() {
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([])
   const [newNote, setNewNote] = useState('')
   const [showEmailForm, setShowEmailForm] = useState(false)
+  const [showTaskForm, setShowTaskForm] = useState(false)
+  const [showDealForm, setShowDealForm] = useState(false)
   const [emailForm, setEmailForm] = useState({ subject: '', body: '' })
+  const [taskForm, setTaskForm] = useState({ title: '', due_date: '', description: '' })
+  const [dealForm, setDealForm] = useState({ title: '', value: '', stage: 'lead' })
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [currentPage, setCurrentPage] = useState(1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -141,6 +146,41 @@ export function ContactsPage() {
     })
     setEmailForm({ subject: '', body: '' })
     setShowEmailForm(false)
+  }
+
+  const handleAddTask = async () => {
+    if (!selectedContact || !taskForm.title.trim()) return
+    const now = new Date().toISOString()
+    await addTask({
+      id: crypto.randomUUID(),
+      contact_id: selectedContact.id,
+      title: taskForm.title,
+      description: taskForm.description,
+      status: 'todo',
+      due_date: taskForm.due_date,
+      created_at: now,
+      updated_at: now,
+    })
+    setTaskForm({ title: '', due_date: '', description: '' })
+    setShowTaskForm(false)
+  }
+
+  const handleAddDeal = async () => {
+    if (!selectedContact || !dealForm.title.trim() || !dealForm.value) return
+    const now = new Date().toISOString()
+    await addDeal({
+      id: crypto.randomUUID(),
+      contact_id: selectedContact.id,
+      company_id: selectedContact.company_id,
+      title: dealForm.title,
+      value: parseFloat(dealForm.value) || 0,
+      stage: dealForm.stage,
+      probability: 10,
+      created_at: now,
+      updated_at: now,
+    })
+    setDealForm({ title: '', value: '', stage: 'lead' })
+    setShowDealForm(false)
   }
 
   const toggleTag = (tag: string) => {
@@ -409,72 +449,122 @@ export function ContactsPage() {
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="flex gap-2 mb-4">
-              <Button onClick={() => setShowEmailForm(!showEmailForm)} className="flex-1">Send Email</Button>
+            </div>            <div className="flex gap-2 mb-4">
+              <Button onClick={() => setShowEmailForm(!showEmailForm)} className="flex-1" variant={showEmailForm ? 'secondary' : 'primary'}>Email</Button>
+              <Button onClick={() => setShowTaskForm(!showTaskForm)} className="flex-1" variant={showTaskForm ? 'secondary' : 'primary'}>Task</Button>
+              <Button onClick={() => setShowDealForm(!showDealForm)} className="flex-1" variant={showDealForm ? 'secondary' : 'primary'}>Deal</Button>
             </div>
 
             {showEmailForm && (
-              <Card className="mb-4">
+              <Card className="mb-4 bg-bg-deep border-brand/20">
                 <div className="space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-brand">Send Email</h4>
                   <input
                     type="text"
                     placeholder="Subject"
                     value={emailForm.subject}
                     onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })}
-                    className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary"
+                    className="w-full bg-bg border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                   />
                   <textarea
                     placeholder="Message"
                     rows={4}
                     value={emailForm.body}
                     onChange={e => setEmailForm({ ...emailForm, body: e.target.value })}
-                    className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary"
+                    className="w-full bg-bg border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                   />
-                  <Button onClick={handleSendEmail}>Send</Button>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSendEmail} className="flex-1">Send</Button>
+                    <Button onClick={() => setShowEmailForm(false)} variant="ghost">Cancel</Button>
+                  </div>
                 </div>
               </Card>
             )}
 
-            <div className="border-t border-border-subtle pt-4">
-              <h3 className="text-text-primary font-medium mb-3">Emails ({getContactEmails(selectedContact.id).length})</h3>
-              <div className="space-y-2 mb-4">
-                {getContactEmails(selectedContact.id).slice(0, 3).map(email => (
-                  <div key={email.id} className="bg-bg-deep rounded-[6px] p-3">
-                    <p className="text-text-primary text-sm font-medium">{email.subject}</p>
-                    <p className="text-text-muted text-xs mt-1">{new Date(email.created_at).toLocaleDateString()}</p>
+            {showTaskForm && (
+              <Card className="mb-4 bg-bg-deep border-brand/20">
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-brand">New Task</h4>
+                  <input
+                    type="text"
+                    placeholder="Task title"
+                    value={taskForm.title}
+                    onChange={e => setTaskForm({ ...taskForm, title: e.target.value })}
+                    className="w-full bg-bg border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  />
+                  <input
+                    type="date"
+                    value={taskForm.due_date}
+                    onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                    className="w-full bg-bg border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  />
+                  <textarea
+                    placeholder="Description (optional)"
+                    rows={2}
+                    value={taskForm.description}
+                    onChange={e => setTaskForm({ ...taskForm, description: e.target.value })}
+                    className="w-full bg-bg border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={handleAddTask} className="flex-1">Create Task</Button>
+                    <Button onClick={() => setShowTaskForm(false)} variant="ghost">Cancel</Button>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              </Card>
+            )}
 
-            <div className="border-t border-border-subtle pt-4">
-              <h3 className="text-text-primary font-medium mb-3">Notes ({getContactNotes(selectedContact.id).length})</h3>
+            {showDealForm && (
+              <Card className="mb-4 bg-bg-deep border-brand/20">
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-brand">New Deal</h4>
+                  <input
+                    type="text"
+                    placeholder="Deal title"
+                    value={dealForm.title}
+                    onChange={e => setDealForm({ ...dealForm, title: e.target.value })}
+                    className="w-full bg-bg border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Value ($)"
+                    value={dealForm.value}
+                    onChange={e => setDealForm({ ...dealForm, value: e.target.value })}
+                    className="w-full bg-bg border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  />
+                  <select
+                    value={dealForm.stage}
+                    onChange={e => setDealForm({ ...dealForm, stage: e.target.value })}
+                    className="w-full bg-bg border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                  >
+                    <option value="lead">Lead</option>
+                    <option value="qualified">Qualified</option>
+                    <option value="proposal">Proposal</option>
+                    <option value="negotiation">Negotiation</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <Button onClick={handleAddDeal} className="flex-1">Create Deal</Button>
+                    <Button onClick={() => setShowDealForm(false)} variant="ghost">Cancel</Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+            <div className="border-t border-border-subtle pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-text-primary font-semibold">Activity Timeline</h3>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Quick note..."
+                    value={newNote}
+                    onChange={e => setNewNote(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddNote()}
+                    className="bg-bg-deep border border-border-base rounded-pill px-3 py-1 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none text-xs"
+                  />
+                  <Button onClick={handleAddNote} className="h-7 px-3 py-0 text-xs">Add</Button>
+                </div>
+              </div>
               
-              <div className="space-y-2 mb-4">
-                {getContactNotes(selectedContact.id).map(note => (
-                  <div key={note.id} className="bg-bg-deep rounded-[6px] p-3">
-                    <p className="text-text-primary text-sm">{note.content}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-text-muted text-xs">{new Date(note.created_at).toLocaleDateString()}</p>
-                      <button onClick={() => deleteNote(note.id)} className="text-text-muted hover:text-[hsl(348,75%,58%)] text-xs">Delete</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Add a note..."
-                  value={newNote}
-                  onChange={e => setNewNote(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAddNote()}
-                  className="flex-1 bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-brand-border focus:outline-none text-sm"
-                />
-                <Button onClick={handleAddNote}>Add</Button>
-              </div>
+              <ActivityTimeline contactId={selectedContact.id} />
             </div>
           </div>
         </div>

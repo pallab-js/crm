@@ -11,6 +11,7 @@ pub struct Activity {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct DashboardState {
+    #[serde(default)]
     pub stats: Vec<serde_json::Value>,
     pub recent: Vec<Activity>,
 }
@@ -68,6 +69,7 @@ pub struct Deal {
     pub probability: i32,
     pub contact_id: String,
     pub company_id: Option<String>,
+    pub expected_close_date: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -82,15 +84,24 @@ pub struct Task {
     pub recurring: Option<String>,
     pub contact_id: Option<String>,
     pub deal_id: Option<String>,
+    pub company_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct AppSettings {
+    #[serde(default = "default_theme")]
     pub theme: String,
+    #[serde(default = "default_tags")]
     pub tags: Vec<String>,
+    #[serde(default = "default_monthly_target")]
+    pub monthly_target: f64,
 }
+
+fn default_theme() -> String { "dark".to_string() }
+fn default_tags() -> Vec<String> { vec!["VIP".to_string(), "Follow up".to_string(), "Hot lead".to_string(), "Cold".to_string()] }
+fn default_monthly_target() -> f64 { 100000.0 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct AppData {
@@ -121,6 +132,7 @@ async fn load_app_data(app: tauri::AppHandle) -> Result<AppData, String> {
             settings: AppSettings {
                 theme: "dark".to_string(),
                 tags: vec!["VIP".to_string(), "Follow up".to_string(), "Hot lead".to_string(), "Cold".to_string()],
+                monthly_target: 100000.0,
             },
             ..Default::default()
         })
@@ -131,8 +143,17 @@ async fn load_app_data(app: tauri::AppHandle) -> Result<AppData, String> {
 async fn save_app_data(app: tauri::AppHandle, data: AppData) -> Result<(), String> {
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+    
+    let file_path = data_dir.join("data.json");
+    let temp_path = data_dir.join("data.json.tmp");
+    
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    fs::write(data_dir.join("data.json"), json).map_err(|e| e.to_string())
+    
+    // Write to temporary file first
+    fs::write(&temp_path, json).map_err(|e| e.to_string())?;
+    
+    // Atomic rename (replaces file_path if it exists)
+    fs::rename(&temp_path, &file_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -148,6 +169,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             load_app_data,
             save_app_data,

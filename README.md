@@ -1,6 +1,6 @@
 # OpenCRM
 
-A free, open-source CRM desktop application for macOS Apple Silicon, built with Tauri v2 + Next.js 14.
+A free, open-source CRM desktop application for macOS Apple Silicon, built with Tauri v2 + Next.js 16.
 
 ## Features
 
@@ -11,6 +11,9 @@ A free, open-source CRM desktop application for macOS Apple Silicon, built with 
 - **Tasks** — Todo management with recurring task support
 - **Calendar** — Monthly calendar view for scheduling
 - **Analytics** — Visual charts and performance metrics
+- **Command Palette** — Global search and quick actions (Cmd+K)
+- **Activity Timeline** — Chronological view of all customer interactions
+- **Kanban Boards** — Drag-and-drop management for deals and tasks
 
 ## Getting Started
 

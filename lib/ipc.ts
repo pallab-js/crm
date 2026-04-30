@@ -7,7 +7,6 @@ export interface Activity {
 }
 
 export interface DashboardState {
-  stats: { label: string; value: string; delta?: number }[]
   recent: Activity[]
 }
 
@@ -59,6 +58,7 @@ export interface Deal {
   probability: number
   contact_id: string
   company_id?: string
+  expected_close_date?: string
   created_at: string
   updated_at: string
 }
@@ -72,6 +72,7 @@ export interface Task {
   recurring?: string
   contact_id?: string
   deal_id?: string
+  company_id?: string
   created_at: string
   updated_at: string
 }
@@ -79,6 +80,7 @@ export interface Task {
 export interface AppSettings {
   theme: 'dark' | 'light'
   tags: string[]
+  monthly_target: number
 }
 
 export interface AppData {

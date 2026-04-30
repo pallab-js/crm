@@ -4,10 +4,14 @@ import { useAppStore } from '@/store/dashboard'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { DEAL_STAGES, STAGE_COLORS, formatDate, formatCurrency, ITEMS_PER_PAGE } from '@/lib/constants'
+import { DEAL_STAGES, STAGE_PROBABILITIES, STAGE_COLORS, formatDate, formatCurrency, ITEMS_PER_PAGE } from '@/lib/constants'
 import { validateDeal } from '@/lib/validation'
 import { Pagination } from '@/components/ui/Pagination'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { DealsKanban } from '@/components/dashboard/DealsKanban'
+import { DealDetailModal } from '@/components/dashboard/DealDetailModal'
+import { LayoutGrid, List } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface DealCardProps {
   deal: { id: string; title: string; value: number; stage: string; probability: number; contact_id: string; created_at: string }
@@ -54,13 +58,18 @@ function DealCard({ deal, onMove, onDelete, getContactName }: DealCardProps) {
 }
 
 export function DealsPage() {
-  const { deals, contacts, companies, addDeal, updateDeal, deleteDeal } = useAppStore()
+  const { deals, contacts, companies, tasks, addDeal, updateDeal, deleteDeal, addTask } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
+  const [selectedDeal, setSelectedDeal] = useState<typeof deals[0] | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [currentPage, setCurrentPage] = useState(1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  
+  const [showTaskForm, setShowTaskForm] = useState(false)
+  const [taskForm, setTaskForm] = useState({ title: '', due_date: '', description: '' })
+
   const [formData, setFormData] = useState({
     title: '',
     value: 0,
@@ -68,6 +77,7 @@ export function DealsPage() {
     probability: 10,
     contact_id: '',
     company_id: '',
+    expected_close_date: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,8 +96,32 @@ export function DealsPage() {
       created_at: now,
       updated_at: now,
     })
-    setFormData({ title: '', value: 0, stage: 'lead', probability: 10, contact_id: '', company_id: '' })
+    setFormData({ title: '', value: 0, stage: 'lead', probability: 10, contact_id: '', company_id: '', expected_close_date: '' })
     setShowForm(false)
+  }
+
+  const handleAddTask = async () => {
+    if (!selectedDeal || !taskForm.title) return
+    const now = new Date().toISOString()
+    await addTask({
+      id: crypto.randomUUID(),
+      deal_id: selectedDeal.id,
+      contact_id: selectedDeal.contact_id,
+      company_id: selectedDeal.company_id,
+      title: taskForm.title,
+      description: taskForm.description,
+      status: 'todo',
+      due_date: taskForm.due_date,
+      created_at: now,
+      updated_at: now,
+    })
+    setTaskForm({ title: '', due_date: '', description: '' })
+    setShowTaskForm(false)
+  }
+
+  const handleStageChange = async (dealId: string, stage: string) => {
+    const probability = STAGE_PROBABILITIES[stage] ?? 10
+    await updateDeal(dealId, { stage, probability })
   }
 
   const getContactName = (id: string) => {
@@ -119,18 +153,24 @@ export function DealsPage() {
           <p className="text-text-secondary mt-2">Track your sales pipeline</p>
         </div>
         <div className="flex gap-2">
-          <div className="flex bg-bg-deep rounded-pill p-1">
+          <div className="flex bg-bg-deep border border-border-base rounded-lg p-1">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1 rounded-pill text-sm ${viewMode === 'list' ? 'bg-brand text-bg-deep' : 'text-text-muted'}`}
+              className={cn(
+                "p-1.5 rounded-md transition-all",
+                viewMode === 'list' ? "bg-bg shadow-sm text-brand" : "text-text-muted hover:text-text-secondary"
+              )}
             >
-              List
+              <List className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('board')}
-              className={`px-3 py-1 rounded-pill text-sm ${viewMode === 'board' ? 'bg-brand text-bg-deep' : 'text-text-muted'}`}
+              className={cn(
+                "p-1.5 rounded-md transition-all",
+                viewMode === 'board' ? "bg-bg shadow-sm text-brand" : "text-text-muted hover:text-text-secondary"
+              )}
             >
-              Board
+              <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
           <Button onClick={() => setShowForm(!showForm)}>
@@ -200,13 +240,25 @@ export function DealsPage() {
                 <label className="block text-text-muted text-sm mb-1">Stage</label>
                 <select
                   value={formData.stage}
-                  onChange={e => setFormData({ ...formData, stage: e.target.value })}
+                  onChange={e => setFormData({ ...formData, stage: e.target.value, probability: STAGE_PROBABILITIES[e.target.value] || 10 })}
                   className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
                 >
                   {DEAL_STAGES.map(stage => (
                     <option key={stage} value={stage}>{stage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-text-muted text-sm mb-1">Probability ({formData.probability}%)</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={formData.probability}
+                  onChange={e => setFormData({ ...formData, probability: Number(e.target.value) })}
+                  className="w-full h-2 bg-bg-deep rounded-lg appearance-none cursor-pointer accent-brand mt-4"
+                />
               </div>
               <div>
                 <label className="block text-text-muted text-sm mb-1">Contact</label>
@@ -234,33 +286,22 @@ export function DealsPage() {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-text-muted text-sm mb-1">Expected Close Date</label>
+                <input
+                  type="date"
+                  value={formData.expected_close_date}
+                  onChange={e => setFormData({ ...formData, expected_close_date: e.target.value })}
+                  className="w-full bg-bg-deep border border-border-base rounded-[6px] px-3 py-2 text-text-primary focus:border-brand-border focus:outline-none"
+                />
+              </div>
             </div>
             <Button type="submit">Save Deal</Button>
           </form>
         </Card>
       )}
-
       {viewMode === 'board' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 overflow-x-auto">
-{DEAL_STAGES.map(stage => (
-              <div key={stage} className="min-h-[200px]">
-                <div className={`text-xs uppercase tracking-wider text-text-muted mb-2 pb-2 border-b ${STAGE_COLORS[stage]?.border || 'border-text-muted'}`}>
-                {stage.replace('_', ' ')} ({dealsByStage[stage].length})
-              </div>
-              <div className="space-y-0">
-                {dealsByStage[stage].map(deal => (
-                  <DealCard
-                    key={deal.id}
-                    deal={deal}
-                    onMove={updateDeal}
-                    onDelete={deleteDeal}
-                    getContactName={getContactName}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <DealsKanban onDealClick={setSelectedDeal} />
       ) : filteredDeals.length === 0 ? (
         <Card>
           <p className="text-text-muted text-center py-8">
@@ -271,7 +312,7 @@ export function DealsPage() {
         <>
           <div className="space-y-4">
             {paginatedDeals.map(deal => (
-            <Card key={deal.id}>
+            <Card key={deal.id} onClick={() => setSelectedDeal(deal)} className="cursor-pointer hover:border-brand-border transition-colors">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-text-primary text-lg">{deal.title}</p>
@@ -279,14 +320,14 @@ export function DealsPage() {
                     {deal.contact_id && getContactName(deal.contact_id)} · {formatDate(deal.created_at)}
                   </p>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6" onClick={e => e.stopPropagation()}>
                   <div className="text-right">
                     <p className="text-text-primary">${deal.value.toLocaleString()}</p>
                     <Badge>{deal.stage.replace('_', ' ')}</Badge>
                   </div>
                   <select
                     value={deal.stage}
-                    onChange={e => updateDeal(deal.id, { stage: e.target.value })}
+                    onChange={e => handleStageChange(deal.id, e.target.value)}
                     className="bg-bg-deep border border-border-base rounded-[6px] px-2 py-1 text-text-primary text-sm"
                   >
                     {DEAL_STAGES.map(stage => (
@@ -311,6 +352,17 @@ export function DealsPage() {
             onPageChange={setCurrentPage}
           />
         </>
+      )}
+
+      {selectedDeal && (
+        <DealDetailModal
+          deal={selectedDeal}
+          onClose={() => setSelectedDeal(null)}
+          onUpdate={updateDeal}
+          addTask={addTask}
+          contacts={contacts}
+          companies={companies}
+        />
       )}
 
       {confirmDelete && (

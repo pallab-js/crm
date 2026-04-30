@@ -15,17 +15,52 @@ export function ImportButton() {
   const [importResult, setImportResult] = useState<{ count: number; type: string } | null>(null)
 
   const parseCSV = (text: string): Record<string, string>[] => {
-    const lines = text.trim().split('\n')
-    if (lines.length < 2) return []
-    
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-    return lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim())
-      const row: Record<string, string> = {}
+    const rows: string[][] = []
+    let currentCell = ''
+    let inQuotes = false
+    let currentRow: string[] = []
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i]
+      const nextChar = text[i + 1]
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          currentCell += '"'
+          i++
+        } else {
+          inQuotes = !inQuotes
+        }
+      } else if (char === ',' && !inQuotes) {
+        currentRow.push(currentCell.trim())
+        currentCell = ''
+      } else if ((char === '\n' || char === '\r') && !inQuotes) {
+        if (currentRow.length > 0 || currentCell !== '') {
+          currentRow.push(currentCell.trim())
+          rows.push(currentRow)
+          currentRow = []
+          currentCell = ''
+        }
+        if (char === '\r' && nextChar === '\n') i++
+      } else {
+        currentCell += char
+      }
+    }
+
+    if (currentRow.length > 0 || currentCell !== '') {
+      currentRow.push(currentCell.trim())
+      rows.push(currentRow)
+    }
+
+    if (rows.length < 2) return []
+
+    const headers = rows[0].map(h => h.toLowerCase())
+    return rows.slice(1).map(row => {
+      const obj: Record<string, string> = {}
       headers.forEach((h, i) => {
-        row[h] = values[i] || ''
+        obj[h] = row[i] || ''
       })
-      return row
+      return obj
     })
   }
 

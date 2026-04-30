@@ -34,14 +34,43 @@ interface AppStore extends AppData {
 }
 
 const initialState: AppData = {
-  dashboard: { stats: [], recent: [] },
+  dashboard: { recent: [] },
   companies: [],
   contacts: [],
   notes: [],
   emails: [],
   deals: [],
   tasks: [],
-  settings: { theme: 'dark', tags: ['VIP', 'Follow up', 'Hot lead', 'Cold'] },
+  settings: { 
+    theme: 'dark', 
+    tags: ['VIP', 'Follow up', 'Hot lead', 'Cold'],
+    monthly_target: 100000 
+  },
+}
+
+const getAppData = (s: AppStore): AppData => ({
+  dashboard: s.dashboard,
+  companies: s.companies,
+  contacts: s.contacts,
+  notes: s.notes,
+  emails: s.emails,
+  deals: s.deals,
+  tasks: s.tasks,
+  settings: s.settings,
+})
+
+let saveTimeout: NodeJS.Timeout | null = null
+
+const persist = (s: AppStore) => {
+  if (saveTimeout) clearTimeout(saveTimeout)
+  saveTimeout = setTimeout(async () => {
+    try {
+      await saveAppData(getAppData(s))
+      saveTimeout = null
+    } catch (err) {
+      console.error('[OpenCRM] Sync error:', err)
+    }
+  }, 1000) // 1s debounce for disk I/O
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -71,17 +100,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } else if (type === 'tasks') {
       set({ tasks: [...get().tasks, ...(records as Task[])] })
     }
-    const s = get()
-    await saveAppData({
-      dashboard: s.dashboard,
-      companies: s.companies,
-      contacts: s.contacts,
-      notes: s.notes,
-      emails: s.emails,
-      deals: s.deals,
-      tasks: s.tasks,
-      settings: s.settings,
-    })
+    await persist(get())
   },
 
   addCompany: async (company: Company) => {
@@ -89,16 +108,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Added company: ${company.name}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ companies, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   updateCompany: async (id: string, updates: Partial<Company>) => {
@@ -109,16 +119,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Updated company: ${company?.name || 'Unknown'}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ companies, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   deleteCompany: async (id: string) => {
@@ -128,16 +129,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Deleted company: ${company?.name || 'Unknown'}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ companies, contacts, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies,
-      contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   addContact: async (contact: Contact) => {
@@ -145,16 +137,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Added contact: ${contact.name}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ contacts, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   updateContact: async (id: string, updates: Partial<Contact>) => {
@@ -165,16 +148,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Updated contact: ${contact?.name || 'Unknown'}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ contacts, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   deleteContact: async (id: string) => {
@@ -185,16 +159,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Deleted contact: ${contact?.name || 'Unknown'}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ contacts, notes, emails, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts,
-      notes,
-      emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   addNote: async (note: Note) => {
@@ -202,31 +167,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Added note to contact`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ notes, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts: get().contacts,
-      notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   deleteNote: async (id: string) => {
     const notes = get().notes.filter(n => n.id !== id)
     set({ notes })
-    await saveAppData({
-      dashboard: get().dashboard,
-      companies: get().companies,
-      contacts: get().contacts,
-      notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   addEmail: async (email: Email) => {
@@ -234,33 +181,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Email ${email.direction}: ${email.subject}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ emails, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   addDeal: async (deal: Deal) => {
     const deals = [...get().deals, deal]
-    const activity = createActivity(`New deal: ${deal.title} ($${deal.value.toLocaleString()})`)
+    const contact = get().contacts.find(c => c.id === deal.contact_id)
+    const activity = createActivity(`New deal: ${deal.title} ($${deal.value.toLocaleString()})${contact ? ` for ${contact.name}` : ''}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ deals, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   updateDeal: async (id: string, updates: Partial<Deal>) => {
@@ -278,16 +208,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(activityMessage)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ deals, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   deleteDeal: async (id: string) => {
@@ -296,33 +217,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Deleted deal: ${deal?.title || 'Unknown'}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ deals, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals,
-      tasks: get().tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   addTask: async (task: Task) => {
     const tasks = [...get().tasks, task]
-    const activity = createActivity(`New task: ${task.title}`)
+    const contact = task.contact_id ? get().contacts.find(c => c.id === task.contact_id) : null
+    const company = task.company_id ? get().companies.find(c => c.id === task.company_id) : null
+    const deal = task.deal_id ? get().deals.find(d => d.id === task.deal_id) : null
+    const activityMessage = `New task: ${task.title}${contact ? ` for ${contact.name}` : deal ? ` related to ${deal.title}` : company ? ` for ${company.name}` : ''}`
+    const activity = createActivity(activityMessage)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ tasks, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   updateTask: async (id: string, updates: Partial<Task>) => {
@@ -357,16 +264,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(activityMessage)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ tasks, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   deleteTask: async (id: string) => {
@@ -375,16 +273,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const activity = createActivity(`Deleted task: ${task?.title || 'Unknown'}`)
     const recent = [activity, ...get().dashboard.recent].slice(0, 20)
     set({ tasks, dashboard: { ...get().dashboard, recent } })
-    await saveAppData({
-      dashboard: { ...get().dashboard, recent },
-      companies: get().companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks,
-      settings: get().settings,
-    })
+    await persist(get())
   },
 
   updateSettings: async (updates: Partial<AppSettings>) => {
@@ -393,16 +282,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (settings.theme) {
       document.documentElement.setAttribute('data-theme', settings.theme)
     }
-    await saveAppData({
-      dashboard: get().dashboard,
-      companies: get().companies,
-      contacts: get().contacts,
-      notes: get().notes,
-      emails: get().emails,
-      deals: get().deals,
-      tasks: get().tasks,
-      settings,
-    })
+    await persist(get())
   },
 
   setCurrentView: (view: string) => set({ currentView: view }),

@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Open Source CRM Alternative",
 };
 
+import { CommandPalette } from "@/components/ui/CommandPalette";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -13,7 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark h-full">
-      <body className="min-h-full flex flex-col bg-bg text-text-primary">{children}</body>
+      <body className="min-h-full flex flex-col bg-bg text-text-primary">
+        {children}
+        <CommandPalette />
+      </body>
     </html>
   );
 }
