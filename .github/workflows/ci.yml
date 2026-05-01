@@ -8,7 +8,7 @@ on:
 
 jobs:
   frontend:
-    name: Frontend (lint, typecheck, test)
+    name: Frontend (lint, typecheck, test, audit)
     runs-on: ubuntu-latest
 
     steps:
@@ -34,8 +34,12 @@ jobs:
       - name: Unit tests
         run: pnpm test:run
 
+      - name: npm audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+
   rust:
-    name: Rust (cargo test)
+    name: Rust (cargo test, audit)
     runs-on: macos-latest
 
     steps:
@@ -52,3 +56,12 @@ jobs:
       - name: Cargo test
         run: cargo test
         working-directory: src-tauri
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+        working-directory: src-tauri
+
+      - name: Cargo audit
+        run: cargo audit
+        working-directory: src-tauri
+        continue-on-error: true

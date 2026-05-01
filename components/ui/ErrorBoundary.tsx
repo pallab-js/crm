@@ -1,3 +1,4 @@
+'use client'
 import { Component, ReactNode, ErrorInfo } from 'react'
 
 interface Props {
@@ -17,7 +18,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[OpenCRM] Uncaught error:', error, info.componentStack)
+    // Log only safe error info, not the full error object
+    console.error('[OpenCRM] Uncaught error in component')
+    if (info.componentStack) {
+      console.error('[OpenCRM] Component stack trace available')
+    }
   }
 
   render() {
@@ -25,7 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return this.props.fallback ?? (
         <div className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
           <p className="text-text-primary font-medium mb-2">Something went wrong</p>
-          <p className="text-text-muted text-sm mb-4">{this.state.error.message}</p>
+          <p className="text-text-muted text-sm mb-4">An unexpected error occurred. Please try again.</p>
           <button
             onClick={() => this.setState({ error: null })}
             className="px-4 py-2 bg-brand/20 text-brand rounded-[6px] text-sm hover:bg-brand/30 transition-colors"

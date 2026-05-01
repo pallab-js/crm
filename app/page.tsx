@@ -14,7 +14,8 @@ import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { SalesProgress } from '@/components/dashboard/SalesProgress'
 import { CommandPalette } from '@/components/ui/CommandPalette'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
-import { AlertCircle, ArrowUpRight, ArrowDownRight, Clock, Zap, Command } from 'lucide-react'
+import { AlertCircle, ArrowUpRight, ArrowDownRight, Clock, Zap, Command, X } from 'lucide-react'
+import { useUiStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
 
 const ContactsPage = lazy(() => import('@/components/pages/ContactsPage').then(m => ({ default: m.ContactsPage })))
@@ -169,6 +170,27 @@ export default function HomePage() {
   useEffect(() => { document.title = `OpenCRM - ${currentView.charAt(0).toUpperCase() + currentView.slice(1)}` }, [currentView])
   useEffect(() => { window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown) }, [handleKeyDown])
 
+  // Show save errors to user
+  const saveError = useUiStore(state => state.saveError)
+  const clearSaveError = useUiStore(state => state.clearSaveError)
+
+  // Global error handlers
+  useEffect(() => {
+    const handleUnhandledRejection = (e: PromiseRejectionEvent) => {
+      console.error('[OpenCRM] Unhandled promise rejection')
+      e.preventDefault()
+    }
+    const handleError = (e: ErrorEvent) => {
+      console.error('[OpenCRM] Unhandled error occurred')
+    }
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+    window.addEventListener('error', handleError)
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+      window.removeEventListener('error', handleError)
+    }
+  }, [])
+
   if (loading) {
     return (
       <main className="min-h-screen bg-bg flex items-center justify-center">
@@ -181,61 +203,72 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-bg flex">
-      <CommandPalette />
-      <Sidebar>
-        <div className="mb-10">
-          <div className="flex items-center gap-3 px-4 py-2">
-            <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center shadow-lg shadow-brand/20">
-              <Zap className="w-5 h-5 text-bg-deep fill-current" />
-            </div>
-            <span className="text-text-primary text-lg font-bold tracking-tight">OpenCRM</span>
-          </div>
-        </div>
-        <nav className="space-y-1">
-          {[
-            ['dashboard', 'Dashboard', '1'], ['contacts', 'Contacts', '2'], ['companies', 'Companies', '3'],
-            ['deals', 'Deals', '4'], ['tasks', 'Tasks', '5'], ['calendar', 'Calendar', '6'], ['analytics', 'Analytics', '7'],
-          ].map(([view, label, key]) => (
-            <SidebarItem key={view} href="#" active={currentView === view} onClick={() => setCurrentView(view)}>
-              {label} <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">{key}</span>
-            </SidebarItem>
-          ))}
-        </nav>
-        <div className="absolute bottom-6 left-6 text-text-muted text-[10px] font-mono leading-relaxed opacity-40">
-          ⌘K SEARCH<br />1–7 NAVIGATE<br />? HELP
-        </div>
-      </Sidebar>
-      <div className="flex-1 flex flex-col min-w-0">
-        <Nav />
-        <div className="flex-1 px-6 py-6 max-w-7xl w-full mx-auto overflow-y-auto custom-scrollbar">
-          <ErrorBoundary>
-            <Suspense fallback={PageFallback}>
-              {renderPage(currentView)}
-            </Suspense>
-          </ErrorBoundary>
-        </div>
-        <QuickAddFAB />
-      </div>
-
-      {showHelp && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110]" onClick={() => setShowHelp(false)}>
-          <div className="bg-bg border border-border-base rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand"><Command className="w-6 h-6" /></div>
-              <h2 className="text-text-primary text-2xl font-bold tracking-tight">Shortcuts</h2>
-            </div>
-            <div className="space-y-4">
-              {[['⌘ K', 'Command Palette'], ['1–7', 'Quick Navigate'], ['?', 'This Help'], ['ESC', 'Close Modal']].map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between group">
-                  <span className="text-text-muted text-sm group-hover:text-text-primary transition-colors">{label}</span>
-                  <kbd className="font-mono text-[10px] uppercase tracking-wider text-text-primary bg-bg-deep border border-border-base rounded px-2 py-1 shadow-sm">{key}</kbd>
-                </div>
-              ))}
-            </div>
-          </div>
+    <>
+      {saveError && (
+        <div className="fixed top-4 right-4 z-[100] bg-[hsl(348,75%,58%)]/10 border border-[hsl(348,75%,58%)] rounded-lg px-4 py-3 flex items-center gap-3 shadow-lg max-w-sm">
+          <AlertCircle className="w-5 h-5 text-[hsl(348,75%,58%)] shrink-0" />
+          <div className="flex-1 text-sm text-text-primary">{saveError}</div>
+          <button onClick={clearSaveError} className="text-text-muted hover:text-text-primary transition-colors">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
-    </main>
+      <main className="min-h-screen bg-bg flex">
+        <CommandPalette />
+        <Sidebar>
+          <div className="mb-10">
+            <div className="flex items-center gap-3 px-4 py-2">
+              <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center shadow-lg shadow-brand/20">
+                <Zap className="w-5 h-5 text-bg-deep fill-current" />
+              </div>
+              <span className="text-text-primary text-lg font-bold tracking-tight">OpenCRM</span>
+            </div>
+          </div>
+          <nav className="space-y-1">
+            {[
+              ['dashboard', 'Dashboard', '1'], ['contacts', 'Contacts', '2'], ['companies', 'Companies', '3'],
+              ['deals', 'Deals', '4'], ['tasks', 'Tasks', '5'], ['calendar', 'Calendar', '6'], ['analytics', 'Analytics', '7'],
+            ].map(([view, label, key]) => (
+              <SidebarItem key={view} href="#" active={currentView === view} onClick={() => setCurrentView(view)}>
+                {label} <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">{key}</span>
+              </SidebarItem>
+            ))}
+          </nav>
+          <div className="absolute bottom-6 left-6 text-text-muted text-[10px] font-mono leading-relaxed opacity-40">
+            ⌘K SEARCH<br />1–7 NAVIGATE<br />? HELP
+          </div>
+        </Sidebar>
+        <div className="flex-1 flex flex-col min-w-0">
+          <Nav />
+          <div className="flex-1 px-6 py-6 max-w-7xl w-full mx-auto overflow-y-auto custom-scrollbar">
+            <ErrorBoundary>
+              <Suspense fallback={PageFallback}>
+                {renderPage(currentView)}
+              </Suspense>
+            </ErrorBoundary>
+          </div>
+          <QuickAddFAB />
+        </div>
+
+        {showHelp && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110]" onClick={() => setShowHelp(false)}>
+            <div className="bg-bg border border-border-base rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand"><Command className="w-6 h-6" /></div>
+                <h2 className="text-text-primary text-2xl font-bold tracking-tight">Shortcuts</h2>
+              </div>
+              <div className="space-y-4">
+                {[['⌘ K', 'Command Palette'], ['1–7', 'Quick Navigate'], ['?', 'This Help'], ['ESC', 'Close Modal']].map(([key, label]) => (
+                  <div key={key} className="flex items-center justify-between group">
+                    <span className="text-text-muted text-sm group-hover:text-text-primary transition-colors">{label}</span>
+                    <kbd className="font-mono text-[10px] uppercase tracking-wider text-text-primary bg-bg-deep border border-border-base rounded px-2 py-1 shadow-sm">{key}</kbd>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </>
   )
 }

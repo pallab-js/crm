@@ -13,7 +13,7 @@ export const useAppStore = () => {
   const { companies, addCompany, updateCompany, deleteCompany } = useCompaniesStore()
   const { deals, addDeal, updateDeal, deleteDeal, batchAddDeals } = useDealsStore()
   const { tasks, addTask, updateTask, deleteTask, batchAddTasks } = useTasksStore()
-  const { loading, error, currentView, settings, load, updateSettings, setCurrentView } = useUiStore()
+  const { loading, error, currentView, settings, saveError, clearSaveError, load, updateSettings, setCurrentView } = useUiStore()
 
   return {
     dashboard,
@@ -26,6 +26,7 @@ export const useAppStore = () => {
     settings,
     loading,
     error,
+    saveError,
     currentView,
     load,
     addContact,
@@ -45,6 +46,7 @@ export const useAppStore = () => {
     deleteTask,
     updateSettings,
     setCurrentView,
+    clearSaveError,
     batchAdd: async (type: 'contacts' | 'deals' | 'tasks', records: (Contact | Deal | Task)[]) => {
       if (type === 'contacts') await batchAddContacts(records as Contact[])
       else if (type === 'deals') await batchAddDeals(records as Deal[])

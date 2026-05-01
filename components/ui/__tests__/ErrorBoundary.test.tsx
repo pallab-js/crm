@@ -19,7 +19,7 @@ describe('ErrorBoundary', () => {
   it('renders fallback when child throws', () => {
     render(<ErrorBoundary><Bomb shouldThrow={true} /></ErrorBoundary>)
     expect(screen.getByText('Something went wrong')).toBeDefined()
-    expect(screen.getByText('Test explosion')).toBeDefined()
+    expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeDefined()
   })
 
   it('renders custom fallback when provided', () => {

@@ -13,9 +13,11 @@ interface UiStore {
   error: string | null
   currentView: string
   settings: AppSettings
+  saveError: string | null
   load: () => Promise<void>
   updateSettings: (updates: Partial<AppSettings>) => Promise<void>
   setCurrentView: (view: string) => void
+  clearSaveError: () => void
 }
 
 const defaultSettings: AppSettings = {
@@ -25,6 +27,16 @@ const defaultSettings: AppSettings = {
 }
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
+let saveRetries: number = 0
+const MAX_SAVE_RETRIES = 3
+
+const sanitizeError = (err: unknown): string => {
+  if (err instanceof Error) {
+    // Avoid leaking full object details - return only safe message
+    return err.message || 'An error occurred'
+  }
+  return 'An unknown error occurred'
+}
 
 export const scheduleSave = () => {
   if (saveTimeout) clearTimeout(saveTimeout)
@@ -37,9 +49,23 @@ export const scheduleSave = () => {
       const { tasks } = useTasksStore.getState()
       const { settings } = useUiStore.getState()
       await dataService.save({ dashboard, companies, contacts, notes, emails, deals, tasks, settings })
+      saveRetries = 0
       saveTimeout = null
+      // Clear any previous save error on success
+      const state = useUiStore.getState()
+      if (state.saveError) useUiStore.setState({ saveError: null })
     } catch (err) {
-      console.error('[OpenCRM] Sync error:', err)
+      const safeMessage = sanitizeError(err)
+      console.error('[OpenCRM] Sync error occurred')
+      saveRetries++
+      if (saveRetries < MAX_SAVE_RETRIES) {
+        // Retry after delay with exponential backoff
+        saveTimeout = setTimeout(() => scheduleSave(), 2000 * saveRetries)
+      } else {
+        useUiStore.setState({ saveError: safeMessage })
+        saveTimeout = null
+        saveRetries = 0
+      }
     }
   }, 1000)
 }
@@ -48,6 +74,7 @@ export const useUiStore = create<UiStore>()(
   subscribeWithSelector((set, get) => ({
     loading: false,
     error: null,
+    saveError: null,
     currentView: 'dashboard',
     settings: defaultSettings,
 
@@ -64,7 +91,7 @@ export const useUiStore = create<UiStore>()(
         document.documentElement.setAttribute('data-theme', data.settings.theme ?? 'dark')
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to load data'
-        console.error('[OpenCRM] Load error:', msg)
+        console.error('[OpenCRM] Load error occurred')
         set({ loading: false, error: msg })
       }
     },
@@ -79,5 +106,7 @@ export const useUiStore = create<UiStore>()(
     },
 
     setCurrentView: (view: string) => set({ currentView: view }),
+
+    clearSaveError: () => set({ saveError: null }),
   }))
 )
