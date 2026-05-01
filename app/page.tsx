@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useCallback, useState, lazy, Suspense, useRef, useMemo } from 'react'
+import { useEffect, useCallback, useState, lazy, Suspense, useRef, useMemo, memo } from 'react'
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification'
 import { useAppStore } from '@/store/dashboard'
 import { StatCard } from '@/components/dashboard/StatCard'
@@ -13,6 +13,7 @@ import { PipelineSummary } from '@/components/dashboard/PipelineSummary'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { SalesProgress } from '@/components/dashboard/SalesProgress'
 import { CommandPalette } from '@/components/ui/CommandPalette'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { AlertCircle, ArrowUpRight, ArrowDownRight, Clock, Zap, Command } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -23,19 +24,17 @@ const TasksPage = lazy(() => import('@/components/pages/TasksPage').then(m => ({
 const CalendarPage = lazy(() => import('@/components/pages/CalendarPage').then(m => ({ default: m.CalendarPage })))
 const AnalyticsPage = lazy(() => import('@/components/pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })))
 
-function DashboardView() {
+const DashboardView = memo(function DashboardView() {
   const { contacts, deals, tasks, dashboard, setCurrentView } = useAppStore()
 
-  const activeDealCount = deals.filter(d => d.stage !== 'closed_won' && d.stage !== 'closed_lost').length
-  const doneTaskCount = tasks.filter(t => t.status === 'done').length
-  const totalPipelineValue = deals.reduce((sum, d) => sum + d.value, 0)
-  
-  // Calculate Deltas (Simplified: mock logic for now as we don't have historical snapshots yet)
-  const stats = [
+  const activeDealCount = useMemo(() => deals.filter(d => d.stage !== 'closed_won' && d.stage !== 'closed_lost').length, [deals])
+  const totalPipelineValue = useMemo(() => deals.reduce((sum, d) => sum + d.value, 0), [deals])
+
+  const stats = useMemo(() => [
     { label: 'Pipeline Value', value: `$${totalPipelineValue.toLocaleString()}`, delta: 12.5 },
     { label: 'Active Deals', value: String(activeDealCount), delta: 5.2 },
     { label: 'Contacts', value: String(contacts.length), delta: 8.1 },
-  ]
+  ], [totalPipelineValue, activeDealCount, contacts.length])
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -44,12 +43,14 @@ function DashboardView() {
     const today = new Date().toISOString().split('T')[0]
     const overdue = tasks.filter(t => t.due_date < today && t.status !== 'done').slice(0, 2)
     const stagnantDeals = deals.filter(d => d.stage === 'lead' && new Date(d.created_at) < new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)).slice(0, 2)
-    
     return [
       ...overdue.map(t => ({ id: t.id, type: 'task', title: `Overdue: ${t.title}`, urgency: 'high' })),
       ...stagnantDeals.map(d => ({ id: d.id, type: 'deal', title: `Stagnant Lead: ${d.title}`, urgency: 'medium' }))
     ]
   }, [tasks, deals])
+
+  const handleViewTasks = useCallback(() => setCurrentView('tasks'), [setCurrentView])
+  const handleViewAnalytics = useCallback(() => setCurrentView('analytics'), [setCurrentView])
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -63,8 +64,8 @@ function DashboardView() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button onClick={() => setCurrentView('tasks')} variant="ghost" className="border border-border-base bg-bg-deep/30">View Schedule</Button>
-          <Button onClick={() => setCurrentView('analytics')} className="shadow-lg shadow-brand/20">Market Intel</Button>
+          <Button onClick={handleViewTasks} variant="ghost" className="border border-border-base bg-bg-deep/30">View Schedule</Button>
+          <Button onClick={handleViewAnalytics} className="shadow-lg shadow-brand/20">Market Intel</Button>
         </div>
       </section>
 
@@ -75,15 +76,9 @@ function DashboardView() {
           </div>
           <div className="flex-1 flex flex-wrap gap-3">
             {focusItems.map(item => (
-              <button 
-                key={item.id}
-                onClick={() => setCurrentView(item.type + 's')}
-                className="flex items-center gap-2 px-3 py-1.5 bg-bg border border-border-base rounded-full text-xs font-medium text-text-primary hover:border-brand transition-colors"
-              >
-                <div className={cn(
-                  "w-2 h-2 rounded-full animate-pulse",
-                  item.urgency === 'high' ? "bg-[hsl(348,75%,58%)]" : "bg-[hsl(53,92%,50%)]"
-                )} />
+              <button key={item.id} onClick={() => setCurrentView(item.type + 's')}
+                className="flex items-center gap-2 px-3 py-1.5 bg-bg border border-border-base rounded-full text-xs font-medium text-text-primary hover:border-brand transition-colors">
+                <div className={cn('w-2 h-2 rounded-full animate-pulse', item.urgency === 'high' ? 'bg-[hsl(348,75%,58%)]' : 'bg-[hsl(53,92%,50%)]')} />
                 {item.title}
               </button>
             ))}
@@ -118,6 +113,20 @@ function DashboardView() {
       </div>
     </div>
   )
+})
+
+const PageFallback = <div className="flex items-center justify-center h-64"><div className="text-text-muted text-[12px] font-mono uppercase tracking-[1.2px]">Initialising…</div></div>
+
+function renderPage(view: string) {
+  switch (view) {
+    case 'contacts': return <ContactsPage />
+    case 'companies': return <CompaniesPage />
+    case 'deals': return <DealsPage />
+    case 'tasks': return <TasksPage />
+    case 'calendar': return <CalendarPage />
+    case 'analytics': return <AnalyticsPage />
+    default: return <DashboardView />
+  }
 }
 
 export default function HomePage() {
@@ -131,32 +140,21 @@ export default function HomePage() {
       const permissionResponse = await requestPermission()
       permission = permissionResponse === 'granted'
     }
-
     if (permission) {
       const today = new Date().toISOString().split('T')[0]
-      const dueToday = tasks.filter(t => t.due_date === today && t.status !== 'done')
-      
-      for (const task of dueToday) {
+      for (const task of tasks.filter(t => t.due_date === today && t.status !== 'done')) {
         if (!notifiedTasksRef.current.has(task.id)) {
-          sendNotification({
-            title: 'Task Due Today',
-            body: task.title,
-          })
+          sendNotification({ title: 'Task Due Today', body: task.title })
           notifiedTasksRef.current.add(task.id)
         }
       }
     }
   }, [tasks])
 
-  useEffect(() => {
-    const timer = setInterval(checkReminders, 60000)
-    checkReminders()
-    return () => clearInterval(timer)
-  }, [checkReminders])
+  useEffect(() => { const t = setInterval(checkReminders, 60000); checkReminders(); return () => clearInterval(t) }, [checkReminders])
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-    
     if (e.key === '1' && !e.metaKey) setCurrentView('dashboard')
     else if (e.key === '2' && !e.metaKey) setCurrentView('contacts')
     else if (e.key === '3' && !e.metaKey) setCurrentView('companies')
@@ -168,15 +166,8 @@ export default function HomePage() {
   }, [setCurrentView])
 
   useEffect(() => { load() }, [load])
-
-  useEffect(() => {
-    document.title = `OpenCRM - ${currentView.charAt(0).toUpperCase() + currentView.slice(1)}`
-  }, [currentView])
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  useEffect(() => { document.title = `OpenCRM - ${currentView.charAt(0).toUpperCase() + currentView.slice(1)}` }, [currentView])
+  useEffect(() => { window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown) }, [handleKeyDown])
 
   if (loading) {
     return (
@@ -202,106 +193,40 @@ export default function HomePage() {
           </div>
         </div>
         <nav className="space-y-1">
-          <SidebarItem 
-            href="#" 
-            active={currentView === 'dashboard'} 
-            onClick={() => setCurrentView('dashboard')}
-          >
-            Dashboard <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">1</span>
-          </SidebarItem>
-          <SidebarItem 
-            href="#" 
-            active={currentView === 'contacts'} 
-            onClick={() => setCurrentView('contacts')}
-          >
-            Contacts <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">2</span>
-          </SidebarItem>
-          <SidebarItem 
-            href="#" 
-            active={currentView === 'companies'} 
-            onClick={() => setCurrentView('companies')}
-          >
-            Companies <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">3</span>
-          </SidebarItem>
-          <SidebarItem 
-            href="#" 
-            active={currentView === 'deals'} 
-            onClick={() => setCurrentView('deals')}
-          >
-            Deals <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">4</span>
-          </SidebarItem>
-          <SidebarItem 
-            href="#" 
-            active={currentView === 'tasks'} 
-            onClick={() => setCurrentView('tasks')}
-          >
-            Tasks <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">5</span>
-          </SidebarItem>
-          <SidebarItem 
-            href="#" 
-            active={currentView === 'calendar'} 
-            onClick={() => setCurrentView('calendar')}
-          >
-            Calendar <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">6</span>
-          </SidebarItem>
-          <SidebarItem 
-            href="#" 
-            active={currentView === 'analytics'} 
-            onClick={() => setCurrentView('analytics')}
-          >
-            Analytics <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">7</span>
-          </SidebarItem>
+          {[
+            ['dashboard', 'Dashboard', '1'], ['contacts', 'Contacts', '2'], ['companies', 'Companies', '3'],
+            ['deals', 'Deals', '4'], ['tasks', 'Tasks', '5'], ['calendar', 'Calendar', '6'], ['analytics', 'Analytics', '7'],
+          ].map(([view, label, key]) => (
+            <SidebarItem key={view} href="#" active={currentView === view} onClick={() => setCurrentView(view)}>
+              {label} <span className="text-text-muted text-[10px] ml-auto opacity-50 font-mono">{key}</span>
+            </SidebarItem>
+          ))}
         </nav>
         <div className="absolute bottom-6 left-6 text-text-muted text-[10px] font-mono leading-relaxed opacity-40">
-          ⌘K SEARCH<br />
-          1–7 NAVIGATE<br />
-          ? HELP
+          ⌘K SEARCH<br />1–7 NAVIGATE<br />? HELP
         </div>
       </Sidebar>
       <div className="flex-1 flex flex-col min-w-0">
         <Nav />
         <div className="flex-1 px-6 py-6 max-w-7xl w-full mx-auto overflow-y-auto custom-scrollbar">
-          <Suspense fallback={
-            <div className="flex items-center justify-center h-64">
-              <div className="text-text-muted text-[12px] font-mono uppercase tracking-[1.2px]">Initialising…</div>
-            </div>
-          }>
-            {(() => {
-              switch (currentView) {
-                case 'contacts': return <ContactsPage />
-                case 'companies': return <CompaniesPage />
-                case 'deals': return <DealsPage />
-                case 'tasks': return <TasksPage />
-                case 'calendar': return <CalendarPage />
-                case 'analytics': return <AnalyticsPage />
-                default: return <DashboardView />
-              }
-            })()}
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={PageFallback}>
+              {renderPage(currentView)}
+            </Suspense>
+          </ErrorBoundary>
         </div>
         <QuickAddFAB />
       </div>
 
       {showHelp && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110]"
-          onClick={() => setShowHelp(false)}
-        >
-          <div
-            className="bg-bg border border-border-base rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110]" onClick={() => setShowHelp(false)}>
+          <div className="bg-bg border border-border-base rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand">
-                <Command className="w-6 h-6" />
-              </div>
+              <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand"><Command className="w-6 h-6" /></div>
               <h2 className="text-text-primary text-2xl font-bold tracking-tight">Shortcuts</h2>
             </div>
             <div className="space-y-4">
-              {[
-                ['⌘ K', 'Command Palette'], ['1–7', 'Quick Navigate'],
-                ['?', 'This Help'], ['ESC', 'Close Modal'],
-              ].map(([key, label]) => (
+              {[['⌘ K', 'Command Palette'], ['1–7', 'Quick Navigate'], ['?', 'This Help'], ['ESC', 'Close Modal']].map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between group">
                   <span className="text-text-muted text-sm group-hover:text-text-primary transition-colors">{label}</span>
                   <kbd className="font-mono text-[10px] uppercase tracking-wider text-text-primary bg-bg-deep border border-border-base rounded px-2 py-1 shadow-sm">{key}</kbd>

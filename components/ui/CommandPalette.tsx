@@ -1,6 +1,9 @@
 'use client'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAppStore } from '@/store/dashboard'
+import { useContactsStore } from '@/store/contactsStore'
+import { useCompaniesStore } from '@/store/companiesStore'
+import { useDealsStore } from '@/store/dealsStore'
+import { useUiStore } from '@/store/uiStore'
 import { Search, User, Building2, Briefcase, Calendar, CheckSquare, Zap, Command } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -8,7 +11,10 @@ import { cn } from '@/lib/utils'
 export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const { contacts, companies, deals, setCurrentView } = useAppStore()
+  const contacts = useContactsStore(s => s.contacts)
+  const companies = useCompaniesStore(s => s.companies)
+  const deals = useDealsStore(s => s.deals)
+  const setCurrentView = useUiStore(s => s.setCurrentView)
 
   const results = useMemo(() => {
     if (!search) return []

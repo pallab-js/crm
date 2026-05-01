@@ -102,7 +102,7 @@ export function DealDetailModal({ deal, onClose, onUpdate, addTask, contacts, co
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-text-primary font-semibold">Timeline</h3>
-              <Button onClick={() => setShowTaskForm(!showTaskForm)} size="sm" variant="ghost">Add Task</Button>
+              <Button onClick={() => setShowTaskForm(!showTaskForm)} variant="ghost">Add Task</Button>
             </div>
 
             {showTaskForm && (

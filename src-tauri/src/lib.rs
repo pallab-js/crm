@@ -178,3 +178,35 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn app_data_default_has_dark_theme() {
+        let data = AppData {
+            settings: AppSettings {
+                theme: default_theme(),
+                tags: default_tags(),
+                monthly_target: default_monthly_target(),
+            },
+            ..Default::default()
+        };
+        assert_eq!(data.settings.theme, "dark");
+    }
+
+    #[test]
+    fn app_data_default_tags_not_empty() {
+        let tags = default_tags();
+        assert!(!tags.is_empty());
+    }
+
+    #[test]
+    fn app_data_serializes_and_deserializes() {
+        let data = AppData::default();
+        let json = serde_json::to_string(&data).expect("serialize");
+        let restored: AppData = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(restored.settings.theme, data.settings.theme);
+    }
+}

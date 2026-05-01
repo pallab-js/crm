@@ -1,7 +1,8 @@
+import { memo } from 'react'
 import { Activity } from '@/lib/ipc'
 import { Card } from '@/components/ui/Card'
 
-export function ActivityFeed({ items }: { items: Activity[] }) {
+export const ActivityFeed = memo(function ActivityFeed({ items }: { items: Activity[] }) {
   if (items.length === 0) {
     return (
       <Card>
@@ -26,4 +27,4 @@ export function ActivityFeed({ items }: { items: Activity[] }) {
       </div>
     </Card>
   )
-}
+})

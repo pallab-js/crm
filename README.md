@@ -28,8 +28,8 @@ A free, open-source CRM desktop application for macOS Apple Silicon, built with 
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/opencrm.git
-cd opencrm
+git clone https://github.com/pallab-js/crm.git
+cd crm
 
 # Install dependencies
 pnpm install
@@ -50,19 +50,65 @@ pnpm tauri build --target aarch64-apple-darwin
 | `pnpm build` | Production build (static export) |
 | `pnpm tauri build` | Build Tauri app |
 | `pnpm test` | Run tests (vitest) |
+| `pnpm test:run` | Run tests once (CI mode) |
 | `pnpm lint` | Run linting |
 
 ### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| 1 | Dashboard |
-| 2 | Contacts |
-| 3 | Companies |
-| 4 | Deals |
-| 5 | Tasks |
-| 6 | Calendar |
-| 7 | Analytics |
+| `1` | Dashboard |
+| `2` | Contacts |
+| `3` | Companies |
+| `4` | Deals |
+| `5` | Tasks |
+| `6` | Calendar |
+| `7` | Analytics |
+| `Cmd+K` | Command Palette |
+
+## Project Structure
+
+```
+crm/
+├── app/
+│   ├── globals.css          # CSS variables & global styles
+│   ├── layout.tsx           # Root layout
+│   └── page.tsx             # Main app shell (routing + dashboard)
+├── components/
+│   ├── dashboard/           # Dashboard widgets (StatCard, Charts, Kanban, etc.)
+│   ├── features/            # Feature sub-components per domain
+│   │   ├── contacts/
+│   │   ├── companies/
+│   │   ├── deals/
+│   │   ├── tasks/
+│   │   └── analytics/
+│   ├── pages/               # Full-page views (ContactsPage, DealsPage, etc.)
+│   └── ui/                  # Shared primitives (Button, Card, Badge, ErrorBoundary, etc.)
+├── lib/
+│   ├── constants.ts         # Shared enums and formatters
+│   ├── ipc.ts               # TypeScript interfaces + Tauri invoke wrappers
+│   ├── useDebounce.ts       # Debounce hook
+│   ├── utils.ts             # cn() and other utilities
+│   └── validation.ts        # Pure validation functions
+├── services/
+│   ├── dataService.ts       # Wraps Tauri IPC with error handling
+│   ├── exportService.ts     # CSV/JSON export logic
+│   └── importService.ts     # CSV/JSON import with validation
+├── store/
+│   ├── contactsStore.ts
+│   ├── companiesStore.ts
+│   ├── dealsStore.ts
+│   ├── tasksStore.ts
+│   ├── uiStore.ts
+│   ├── activityStore.ts
+│   └── dashboard.ts         # useAppStore facade (backward-compatible)
+└── src-tauri/
+    ├── src/
+    │   ├── lib.rs           # Tauri commands (load_app_data, save_app_data)
+    │   └── main.rs
+    └── capabilities/
+        └── default.json     # Tauri v2 capability permissions
+```
 
 ## Tech Stack
 
@@ -70,8 +116,8 @@ pnpm tauri build --target aarch64-apple-darwin
 - **Backend**: Rust, Tauri v2
 - **State**: Zustand 5
 - **Charts**: Recharts
-- **Persistence**: @tauri-apps/plugin-fs
-- **Testing**: Vitest
+- **Persistence**: Rust IPC (`load_app_data` / `save_app_data`) writing to `data.json` in the app data directory
+- **Testing**: Vitest + React Testing Library
 
 ## Design
 

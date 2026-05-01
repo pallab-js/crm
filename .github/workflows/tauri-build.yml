@@ -3,8 +3,6 @@ name: Tauri Build (macOS Silicon)
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   build:

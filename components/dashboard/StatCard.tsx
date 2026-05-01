@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Card } from '@/components/ui/Card'
 
 interface Stat {
@@ -6,7 +7,7 @@ interface Stat {
   delta?: number
 }
 
-export function StatCard({ label, value, delta }: Stat) {
+export const StatCard = memo(function StatCard({ label, value, delta }: Stat) {
   const positive = delta !== undefined && delta >= 0
   return (
     <Card>
@@ -19,4 +20,4 @@ export function StatCard({ label, value, delta }: Stat) {
       )}
     </Card>
   )
-}
+})
